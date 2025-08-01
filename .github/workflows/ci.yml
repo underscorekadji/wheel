@@ -171,7 +171,7 @@ jobs:
         run: |
           response=$(curl -s http://localhost:3000/api/health)
           echo "Health check response: $response"
-          
+
           # Check if response contains expected fields
           if echo "$response" | jq -e '.status == "healthy"' > /dev/null; then
             echo "✅ Health check passed"
