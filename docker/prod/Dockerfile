@@ -1,16 +1,6 @@
 # Multi-stage build for Next.js application
 
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
-WORKDIR /app
-
-# Copy package files
-COPY package.json package-lock.json* ./
-
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Stage 2: Build
+# Stage 1: Build
 FROM node:20-alpine AS builder
 WORKDIR /app
 
@@ -26,10 +16,11 @@ COPY . .
 # Create public directory if it doesn't exist
 RUN mkdir -p public
 
-# Build the Next.js application
-RUN npm run build
+# Build the Next.js application using npm script (adds to PATH)
+ENV PATH=/app/node_modules/.bin:$PATH
+RUN next build
 
-# Stage 3: Production runtime
+# Stage 2: Production runtime
 FROM node:20-alpine AS runner
 WORKDIR /app
 
