@@ -12,5 +12,5 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
-# Start the development server using npx
-CMD ["npx", "next", "dev", "-H", "0.0.0.0"]
+# Start the development server using node directly
+CMD ["node", "node_modules/.bin/next", "dev", "-H", "0.0.0.0"]
