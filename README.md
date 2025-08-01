@@ -6,28 +6,32 @@ Real-time spinning wheel app for presenter selection with **Next.js 15 (App Rout
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/underscorekadji/wheel.git
 cd wheel
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Create environment file:
+
 ```bash
 cp .env.example .env.local
 ```
 
 4. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -55,11 +59,13 @@ npm run dev
 ## 📚 Architecture
 
 ### Routes
+
 - `/` → Start page (Create/Join forms)
 - `/room/{id}` → Room page (role detected via cookie)
 - `POST /api/room` → Room creation endpoint
 
 ### Key Features (Planned)
+
 - Role-based UI switching: Organizer (full control) vs Guest (read-only)
 - Real-time sync via custom `useRoomSocket` hook
 - 60fps wheel animation, ≤2s first contentful paint
@@ -67,7 +73,7 @@ npm run dev
 
 ## 🤝 Contributing
 
-This project follows [Conventional Commits](https://conventionalcommits.org/). 
+This project follows [Conventional Commits](https://conventionalcommits.org/).
 
 Example commit message: `feat(component): add new button variant`
 
