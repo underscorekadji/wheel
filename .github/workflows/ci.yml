@@ -68,3 +68,17 @@ jobs:
           name: build-artifacts
           path: .next/
           retention-days: 1
+
+  smoke-test:
+    name: Smoke Test (Nginx HTTPS)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate SSL certificates
+        run: ./docker/ssl/generate-certs.sh
+
+      - name: Run nginx validation test
+        run: ./docker/validate-nginx.sh
