@@ -1,7 +1,7 @@
 # Multi-stage build for Next.js application
 
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
 
 # Copy package files
@@ -16,17 +16,16 @@ COPY . .
 # Create public directory if it doesn't exist
 RUN mkdir -p public
 
-# Build the Next.js application using npm script (adds to PATH)
-ENV PATH=/app/node_modules/.bin:$PATH
-RUN next build
+# Build the Next.js application using the installed binary directly
+RUN PATH="/app/node_modules/.bin:$PATH" next build
 
 # Stage 2: Production runtime
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 # Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 nextjs
 
 # Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
