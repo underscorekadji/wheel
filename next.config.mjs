@@ -4,6 +4,8 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  // Enable standalone output for Docker production builds
+  output: 'standalone',
 }
 
 export default nextConfig

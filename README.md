@@ -41,6 +41,8 @@ npm run dev
 
 ### Docker Development
 
+For local development with hot reload:
+
 1. Clone the repository:
 
 ```bash
@@ -48,10 +50,10 @@ git clone https://github.com/underscorekadji/wheel.git
 cd wheel
 ```
 
-2. Start with Docker Compose:
+2. Start development services:
 
 ```bash
-docker compose up -d
+docker compose -f docker/dev/docker-compose.yml up -d
 ```
 
 3. Access the application:
@@ -61,18 +63,44 @@ docker compose up -d
 4. View logs:
 
 ```bash
-docker compose logs -f
+docker compose -f docker/dev/docker-compose.yml logs -f
 ```
 
 5. Stop services:
 
 ```bash
-docker compose down
+docker compose -f docker/dev/docker-compose.yml down
+```
+
+### Docker Production
+
+For production deployment:
+
+1. Build and start production services:
+
+```bash
+docker compose -f docker/prod/docker-compose.yml up -d --build
+```
+
+2. Access the application at [http://localhost](http://localhost)
+
+3. Stop production services:
+
+```bash
+docker compose -f docker/prod/docker-compose.yml down
+```
+
+### Docker Test Helper
+
+Use the test script to quickly validate your Docker setup:
+
+```bash
+./docker/docker-test.sh
 ```
 
 ### Docker Services
 
-- **app**: Next.js development server (port 3000)
+- **app**: Next.js server (development: hot reload server, production: standalone server)
 - **redis**: Redis server with persistence (port 6379)
 - **nginx**: Reverse proxy with compression and security headers (port 80)
 

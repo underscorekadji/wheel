@@ -5,6 +5,9 @@
 
 echo "🐳 Setting up Wheel app with Docker Compose..."
 
+# Change to project root directory
+cd "$(dirname "$0")/.."
+
 # Check if docker and docker compose are available
 if ! command -v docker &> /dev/null; then
     echo "❌ Docker is not installed or not in PATH"
@@ -48,6 +51,9 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "🛑 To stop services:"
     echo "   docker compose down"
+    echo ""
+    echo "🚀 To test production:"
+    echo "   docker compose -f docker/prod/docker-compose.yml up -d --build"
 else
     echo "❌ Failed to start services!"
     exit 1

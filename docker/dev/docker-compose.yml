@@ -1,20 +1,20 @@
 services:
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: docker/dev/Dockerfile
     container_name: wheel-app
     expose:
-      - "3000"
+      - '3000'
     env_file:
-      - .env.docker
+      - .env
     volumes:
-      - ./src:/app/src:ro
-      - ./public:/app/public:ro
-      - ./next.config.mjs:/app/next.config.mjs:ro
-      - ./tailwind.config.ts:/app/tailwind.config.ts:ro
-      - ./postcss.config.js:/app/postcss.config.js:ro
-      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ../../src:/app/src:ro
+      - ../../public:/app/public:ro
+      - ../../next.config.mjs:/app/next.config.mjs:ro
+      - ../../tailwind.config.ts:/app/tailwind.config.ts:ro
+      - ../../postcss.config.js:/app/postcss.config.js:ro
+      - ../../tsconfig.json:/app/tsconfig.json:ro
     depends_on:
       redis:
         condition: service_healthy
