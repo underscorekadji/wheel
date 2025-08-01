@@ -18,7 +18,7 @@ This directory contains self-signed SSL certificates for HTTPS support in develo
 
 ### Certificate Details
 
-- **Valid for**: localhost, *.localhost, 127.0.0.1, ::1
+- **Valid for**: localhost, `*.localhost`, `127.0.0.1`, `::1`
 - **Validity**: 365 days from generation
 - **Algorithm**: RSA 2048-bit
 - **Type**: Self-signed (development only)
