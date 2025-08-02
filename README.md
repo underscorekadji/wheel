@@ -1,5 +1,7 @@
 # Wheel - Presenter Selection App
 
+[![CI/CD Pipeline](https://github.com/underscorekadji/wheel/actions/workflows/ci.yml/badge.svg)](https://github.com/underscorekadji/wheel/actions/workflows/ci.yml)
+
 Real-time spinning wheel app for presenter selection with **Next.js 15 (App Router) + Socket.IO + Redis**.
 
 ## 🚀 Quick Start
