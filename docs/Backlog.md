@@ -22,6 +22,8 @@ _(Waterfall, single‑developer, GitHub Issues)_
 |  0.4 | Nginx conf for HTTPS (self‑signed) + WS proxy + basic rate‑limit                 | infra, nginx  |  M   |
 |  0.5 | GitHub Actions: install → lint → build → docker build → smoke `curl /api/health` | ci            |  M   |
 |  0.6 | README: local dev, Docker setup, CI badge                                        | docs          |  S   |
+| 0.7  | Setup Husky pre-commit hooks (lint, format, type-check)                          | infra, ci     | S    |
+| 0.8  | Add `commitlint` config for conventional commits                                 | infra, ci     | S    |
 
 ## Milestone 1 – Backend Core
 

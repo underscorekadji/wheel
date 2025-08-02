@@ -1,5 +1,13 @@
 # GitHub Copilot Instructions
 
+## Documentation First
+
+**Always start by reading the project documentation:**
+
+- First, read the contents of the `docs/` folder, especially `docs/Specification.md`
+- This contains the specification with all requirements, user stories, and technical decisions
+- Use this as the source of truth for all implementation decisions
+
 ## Project Overview
 
 Real-time spinning wheel app for presenter selection with **Next.js 15 (App Router) + Socket.IO + Redis**. Single-server architecture targeting 3,000 concurrent WebSocket connections across 100 rooms.
