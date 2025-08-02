@@ -144,71 +144,17 @@ Use the test script to quickly validate your Docker setup:
 
 ## 🤝 Contributing
 
-This project follows [Conventional Commits](https://conventionalcommits.org/) enforced by [Commitlint](https://commitlint.js.org/).
+This project follows [Conventional Commits](https://conventionalcommits.org/).
 
-### Commit Message Format
-
-All commit messages must follow the conventional commit format:
-
-```
-type(scope): subject
-```
-
-#### Commit Types
-
-| Type       | Description                                                                                            |
-| ---------- | ------------------------------------------------------------------------------------------------------ |
-| `feat`     | A new feature                                                                                          |
-| `fix`      | A bug fix                                                                                              |
-| `docs`     | Documentation only changes                                                                             |
-| `style`    | Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc) |
-| `refactor` | A code change that neither fixes a bug nor adds a feature                                              |
-| `perf`     | A code change that improves performance                                                                |
-| `test`     | Adding missing tests or correcting existing tests                                                      |
-| `chore`    | Changes to the build process or auxiliary tools and libraries such as documentation generation         |
-| `ci`       | Changes to our CI configuration files and scripts                                                      |
-| `build`    | Changes that affect the build system or external dependencies                                          |
-| `revert`   | Reverts a previous commit                                                                              |
-
-#### Examples
-
-```bash
-feat(component): add new button variant
-fix(api): resolve user authentication issue
-docs(readme): update installation instructions
-chore(deps): update next.js to latest version
-style(format): fix indentation in components
-test(wheel): add unit tests for spinner logic
-ci(github): update workflow to use Node.js 20
-refactor(hooks): simplify useRoomSocket implementation
-```
-
-#### Rules
-
-- Type and subject are required
-- Type must be lowercase
-- Subject must be lowercase and not end with a period
-- Scope is optional but recommended
-- Use imperative mood in the subject (e.g., "add" not "adds" or "added")
+Example commit message: `feat(component): add new button variant`
 
 ### Pre-commit Hooks
 
-This project uses [Husky](https://typicode.github.io/husky/) to run hooks that enforce code quality standards:
-
-#### Pre-commit Hook
-
-The following checks are automatically run before every commit:
+This project uses [Husky](https://typicode.github.io/husky/) to run pre-commit hooks that enforce code quality standards. The following checks are automatically run before every commit:
 
 - **Code Formatting**: `npm run format:check` - Ensures all files follow Prettier formatting rules
 - **Linting**: `npm run lint` - Runs ESLint to check for code quality and potential issues
 - **Type Checking**: `npm run type-check` - Validates TypeScript types across the project
-
-#### Commit Message Hook
-
-The commit message is validated to ensure it follows conventional commit format:
-
-- **Commit Message Format**: Uses [Commitlint](https://commitlint.js.org/) to enforce conventional commit standards
-- **Conventional Commits**: Ensures type, scope, and subject follow the required format
 
 If any of these checks fail, the commit will be blocked until the issues are resolved.
 
@@ -229,20 +175,6 @@ If a commit is blocked due to pre-commit check failures:
 3. **Type errors**: Manually fix TypeScript type errors reported by `npm run type-check`
 
 After fixing the issues, stage your changes and commit again.
-
-#### Testing Commit Messages
-
-You can test your commit message format before committing using:
-
-```bash
-echo "your commit message" | npx commitlint
-```
-
-Or use the provided script:
-
-```bash
-npm run commitlint
-```
 
 ## 📄 License
 
