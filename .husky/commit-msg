@@ -1,0 +1,22 @@
+echo "🔍 Checking commit message format..."
+
+# Run commitlint to validate commit message against conventional commits
+if ! npx commitlint --edit "$1"; then
+  echo ""
+  echo "❌ Commit message does not follow conventional commit format!"
+  echo ""
+  echo "📝 Expected format: type(scope): subject"
+  echo ""
+  echo "✅ Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert"
+  echo ""
+  echo "📋 Examples:"
+  echo "  feat(component): add new button variant"
+  echo "  fix(api): resolve user authentication issue"
+  echo "  docs(readme): update installation instructions"
+  echo "  chore(deps): update next.js to latest version"
+  echo ""
+  echo "🔗 Learn more: https://conventionalcommits.org/"
+  exit 1
+fi
+
+echo "✅ Commit message format is valid!"

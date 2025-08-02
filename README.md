@@ -143,7 +143,7 @@ Use the test script to quickly validate your Docker setup:
 
 ## 🤝 Contributing
 
-This project follows [Conventional Commits](https://conventionalcommits.org/).
+This project follows [Conventional Commits](https://conventionalcommits.org/) enforced by [Commitlint](https://commitlint.js.org/).
 
 Example commit message: `feat(component): add new button variant`
 
