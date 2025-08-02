@@ -69,16 +69,138 @@ jobs:
           path: .next/
           retention-days: 1
 
-  smoke-test:
-    name: Smoke Test (Nginx HTTPS)
+  docker-build:
+    name: Docker Build
     runs-on: ubuntu-latest
     needs: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build production Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/prod/Dockerfile
+          push: false
+          tags: wheel-app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/wheel-app.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/wheel-app.tar
+          retention-days: 1
+
+  smoke-test:
+    name: Smoke Test (Docker + Health Check)
+    runs-on: ubuntu-latest
+    needs: docker-build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load --input /tmp/wheel-app.tar
+
+      - name: Install jq for JSON parsing
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Generate SSL certificates
         run: ./docker/ssl/generate-certs.sh
 
       - name: Run nginx validation test
         run: ./docker/validate-nginx.sh
+
+      - name: Start Docker Compose services
+        run: |
+          cd docker/dev
+          # Replace the build context with the pre-built image
+          COMPOSE_PROJECT_NAME=ci-test docker compose up -d redis nginx
+
+          # Start the app container with the built image
+          docker run -d \
+            --name wheel-app-test \
+            --network ci-test_wheel-network \
+            -e NODE_ENV=production \
+            -e PORT=3000 \
+            -e REDIS_URL=redis://redis:6379 \
+            wheel-app:latest
+
+      - name: Wait for application to be ready
+        run: |
+          echo "Waiting for application to start..."
+          for i in {1..30}; do
+            if docker logs wheel-app-test 2>&1 | grep -q "Ready\|started\|listening"; then
+              echo "Application appears to be starting..."
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+
+          # Additional wait for full startup
+          sleep 10
+
+      - name: Test health endpoint
+        run: |
+          echo "Testing health endpoint..."
+
+          # Get the container IP
+          APP_IP=$(docker inspect wheel-app-test --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+          echo "App container IP: $APP_IP"
+
+          # Test direct container health endpoint
+          for i in {1..10}; do
+            if curl -f -s "http://$APP_IP:3000/api/health"; then
+              echo "✅ Health endpoint responded successfully"
+              break
+            fi
+            echo "Health check attempt $i failed, retrying..."
+            sleep 3
+          done
+
+          # Verify the response content
+          RESPONSE=$(curl -s "http://$APP_IP:3000/api/health")
+          echo "Health endpoint response: $RESPONSE"
+
+          # Check if response contains expected fields
+          if echo "$RESPONSE" | jq -e '.status == "healthy" and .service == "wheel-app"' > /dev/null; then
+            echo "✅ Health endpoint returned expected response"
+          else
+            echo "❌ Health endpoint response is invalid"
+            exit 1
+          fi
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          echo "=== App container logs ==="
+          docker logs wheel-app-test || echo "No app logs available"
+          echo "=== Redis container logs ==="
+          docker logs ci-test-redis-1 || echo "No redis logs available"
+          echo "=== Nginx container logs ==="
+          docker logs ci-test-nginx-1 || echo "No nginx logs available"
+
+      - name: Cleanup Docker containers
+        if: always()
+        run: |
+          docker stop wheel-app-test || true
+          docker rm wheel-app-test || true
+          cd docker/dev
+          COMPOSE_PROJECT_NAME=ci-test docker compose down -v || true
