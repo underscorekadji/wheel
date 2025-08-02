@@ -48,3 +48,7 @@ POST /api/room       → Room creation endpoint
 - Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, etc.
 - Scope is optional but recommended.
 - Subject should be concise and imperative.
+
+## General Guidelines
+
+- Always run `npm run format` before committing to ensure code quality.
