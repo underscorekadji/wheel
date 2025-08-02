@@ -116,6 +116,7 @@ Use the test script to quickly validate your Docker setup:
 - `npm run format` - Format code with Prettier
 - `npm run format:check` - Check code formatting
 - `npm run type-check` - Check TypeScript types
+- `npm run commitlint` - Validate commit message format
 
 ## 🏗️ Tech Stack
 
@@ -228,6 +229,20 @@ If a commit is blocked due to pre-commit check failures:
 3. **Type errors**: Manually fix TypeScript type errors reported by `npm run type-check`
 
 After fixing the issues, stage your changes and commit again.
+
+#### Testing Commit Messages
+
+You can test your commit message format before committing using:
+
+```bash
+echo "your commit message" | npx commitlint
+```
+
+Or use the provided script:
+
+```bash
+npm run commitlint
+```
 
 ## 📄 License
 
