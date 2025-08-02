@@ -113,6 +113,8 @@ Use the test script to quickly validate your Docker setup:
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Fix ESLint issues
+- `npm run format` - Format code with Prettier
+- `npm run format:check` - Check code formatting
 - `npm run type-check` - Check TypeScript types
 
 ## 🏗️ Tech Stack
@@ -144,6 +146,34 @@ Use the test script to quickly validate your Docker setup:
 This project follows [Conventional Commits](https://conventionalcommits.org/).
 
 Example commit message: `feat(component): add new button variant`
+
+### Pre-commit Hooks
+
+This project uses [Husky](https://typicode.github.io/husky/) to run pre-commit hooks that enforce code quality standards. The following checks are automatically run before every commit:
+
+- **Code Formatting**: `npm run format:check` - Ensures all files follow Prettier formatting rules
+- **Linting**: `npm run lint` - Runs ESLint to check for code quality and potential issues
+- **Type Checking**: `npm run type-check` - Validates TypeScript types across the project
+
+If any of these checks fail, the commit will be blocked until the issues are resolved.
+
+#### Setting up Pre-commit Hooks
+
+Pre-commit hooks are automatically installed when you run `npm install` (via the `prepare` script). If you need to manually reinstall them:
+
+```bash
+npm run prepare
+```
+
+#### Fixing Pre-commit Failures
+
+If a commit is blocked due to pre-commit check failures:
+
+1. **Formatting issues**: Run `npm run format` to auto-fix formatting
+2. **Linting issues**: Run `npm run lint:fix` to auto-fix linting issues, or manually fix remaining issues
+3. **Type errors**: Manually fix TypeScript type errors reported by `npm run type-check`
+
+After fixing the issues, stage your changes and commit again.
 
 ## 📄 License
 
