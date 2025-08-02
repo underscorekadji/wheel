@@ -1,0 +1,21 @@
+echo "🔍 Running pre-commit checks..."
+
+echo "📝 Checking code formatting..."
+if ! npm run format:check; then
+  echo "❌ Code formatting check failed! Please run 'npm run format' to fix."
+  exit 1
+fi
+
+echo "🔧 Running ESLint..."
+if ! npm run lint; then
+  echo "❌ ESLint check failed! Please fix the linting errors."
+  exit 1
+fi
+
+echo "🔍 Type checking..."
+if ! npm run type-check; then
+  echo "❌ TypeScript check failed! Please fix the type errors."
+  exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"
