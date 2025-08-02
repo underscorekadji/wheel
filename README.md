@@ -116,7 +116,6 @@ Use the test script to quickly validate your Docker setup:
 - `npm run format` - Format code with Prettier
 - `npm run format:check` - Check code formatting
 - `npm run type-check` - Check TypeScript types
-- `npm run commitlint` - Validate commit message format
 
 ## 🏗️ Tech Stack
 
@@ -144,7 +143,7 @@ Use the test script to quickly validate your Docker setup:
 
 ## 🤝 Contributing
 
-This project follows [Conventional Commits](https://conventionalcommits.org/).
+This project follows [Conventional Commits](https://conventionalcommits.org/) enforced by [Commitlint](https://commitlint.js.org/).
 
 Example commit message: `feat(component): add new button variant`
 
