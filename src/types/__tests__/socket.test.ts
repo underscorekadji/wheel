@@ -1,14 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { RoomNamespace } from '../socket'
+import type { ParticipantStatus, Participant } from '../participant'
 import type {
-  ParticipantStatus,
   ParticipantAction,
   WheelAction,
   TimerAction,
   MessageType,
   UserRole,
   SocketStatus,
-  Participant,
   WheelState,
   TimerState,
 } from '../socket'
@@ -171,29 +170,33 @@ describe('Socket Types', () => {
           id: 'participant-1',
           name: 'John Doe',
           status: 'queued',
-          joinedAt: '2024-01-01T00:00:00Z',
-          presentedAt: '2024-01-01T01:00:00Z',
-          speakingTime: 300,
+          role: 'guest',
+          joinedAt: new Date('2024-01-01T00:00:00Z'),
+          lastUpdatedAt: new Date('2024-01-01T00:00:00Z'),
+          lastSelectedAt: new Date('2024-01-01T01:00:00Z'),
         }
 
         expect(participant.id).toBe('participant-1')
         expect(participant.name).toBe('John Doe')
         expect(participant.status).toBe('queued')
-        expect(participant.joinedAt).toBe('2024-01-01T00:00:00Z')
-        expect(participant.presentedAt).toBe('2024-01-01T01:00:00Z')
-        expect(participant.speakingTime).toBe(300)
+        expect(participant.role).toBe('guest')
+        expect(participant.joinedAt).toBeInstanceOf(Date)
+        expect(participant.lastUpdatedAt).toBeInstanceOf(Date)
+        expect(participant.lastSelectedAt).toBeInstanceOf(Date)
       })
 
-      it('should allow optional fields', () => {
+      it('should allow null lastSelectedAt', () => {
         const minimalParticipant: Participant = {
           id: 'participant-1',
           name: 'John Doe',
           status: 'queued',
-          joinedAt: '2024-01-01T00:00:00Z',
+          role: 'organizer',
+          joinedAt: new Date('2024-01-01T00:00:00Z'),
+          lastUpdatedAt: new Date('2024-01-01T00:00:00Z'),
+          lastSelectedAt: null,
         }
 
-        expect(minimalParticipant.presentedAt).toBeUndefined()
-        expect(minimalParticipant.speakingTime).toBeUndefined()
+        expect(minimalParticipant.lastSelectedAt).toBe(null)
       })
     })
 

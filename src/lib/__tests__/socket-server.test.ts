@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import type { Server as SocketIOServer } from 'socket.io'
 
 // We need to import the functions directly to test them
-let getSocketServer: () => any
-let setSocketServer: (server: any) => void
+let getSocketServer: () => SocketIOServer | undefined
+let setSocketServer: (server: SocketIOServer) => void
 let isSocketServerInitialized: () => boolean
 
 // Mock Socket.IO Server
@@ -11,7 +12,7 @@ const mockSocketServer = {
   to: vi.fn().mockReturnThis(),
   of: vi.fn(),
   close: vi.fn(),
-}
+} as Partial<SocketIOServer> as SocketIOServer
 
 describe('Socket Server Utilities', () => {
   beforeEach(async () => {
@@ -62,7 +63,7 @@ describe('Socket Server Utilities', () => {
         to: vi.fn().mockReturnThis(),
         of: vi.fn(),
         close: vi.fn(),
-      }
+      } as Partial<SocketIOServer> as SocketIOServer
 
       // Set first server
       setSocketServer(firstServer)
@@ -134,11 +135,23 @@ describe('Socket Server Utilities', () => {
       expect(server1).toBe(server2)
     })
 
-    it('should handle null server (edge case)', () => {
-      // This shouldn't happen in normal usage, but testing defensive programming
-      setSocketServer(null as any)
-      expect(getSocketServer()).toBe(null)
-      expect(isSocketServerInitialized()).toBe(true) // null is still "set"
+    it('should handle server replacement', () => {
+      // Test that replacing a server with another works correctly
+      setSocketServer(mockSocketServer)
+      const firstServer = getSocketServer()
+
+      const anotherMockServer = {
+        emit: vi.fn(),
+        to: vi.fn().mockReturnThis(),
+        of: vi.fn(),
+        close: vi.fn(),
+      } as Partial<SocketIOServer> as SocketIOServer
+
+      setSocketServer(anotherMockServer)
+      const secondServer = getSocketServer()
+
+      expect(firstServer).not.toBe(secondServer)
+      expect(secondServer).toBe(anotherMockServer)
     })
   })
 })

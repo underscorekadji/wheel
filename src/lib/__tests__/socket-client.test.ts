@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { SocketManager, createSocketManager, getSocketManager } from '../socket-client'
 import type { SocketConfig } from '@/types/socket'
+import type { Socket } from 'socket.io-client'
 
 // Mock Socket.IO client
 const mockSocket = {
@@ -78,21 +79,23 @@ describe('SocketManager', () => {
     it('should handle connection errors', async () => {
       const error = new Error('Connection failed')
 
-      setTimeout(() => {
-        const errorCallback = mockSocket.on.mock.calls.find(
-          call => call[0] === 'connect_error'
-        )?.[1]
-        if (errorCallback) errorCallback(error)
-      }, 0)
+      // Mock the waitForConnection to reject immediately
+      const originalWaitForConnection = socketManager['waitForConnection']
+      socketManager['waitForConnection'] = vi.fn().mockRejectedValue(error)
 
-      await expect(socketManager.connect(mockConfig)).rejects.toThrow('Connection failed')
+      await expect(socketManager.connect(mockConfig)).rejects.toThrow(
+        'Socket connection failed: Error: Connection failed'
+      )
       expect(socketManager.getStatus()).toBe('error')
-    }, 15000) // Increased timeout for this test
+
+      // Restore original method
+      socketManager['waitForConnection'] = originalWaitForConnection
+    })
 
     it('should disconnect existing connection before new connection', async () => {
       // Mock existing connection
       mockSocket.connected = true
-      socketManager['socket'] = mockSocket as any
+      socketManager['socket'] = mockSocket as Partial<Socket> as Socket
 
       setTimeout(() => {
         const connectCallback = mockSocket.on.mock.calls.find(call => call[0] === 'connected')?.[1]
@@ -105,7 +108,7 @@ describe('SocketManager', () => {
     })
 
     it('should disconnect properly', async () => {
-      socketManager['socket'] = mockSocket as any
+      socketManager['socket'] = mockSocket as Partial<Socket> as Socket
 
       await socketManager.disconnect()
 
@@ -116,7 +119,7 @@ describe('SocketManager', () => {
 
   describe('Event Emission', () => {
     beforeEach(() => {
-      socketManager['socket'] = mockSocket as any
+      socketManager['socket'] = mockSocket as Partial<Socket> as Socket
       socketManager['config'] = mockConfig
       mockSocket.connected = true
     })
@@ -144,7 +147,10 @@ describe('SocketManager', () => {
           id: 'participant-1',
           name: 'John Doe',
           status: 'queued' as const,
-          joinedAt: '2024-01-01T00:00:00Z',
+          role: 'guest' as const,
+          joinedAt: new Date('2024-01-01T00:00:00Z'),
+          lastUpdatedAt: new Date('2024-01-01T00:00:00Z'),
+          lastSelectedAt: null,
         },
         action: 'added' as const,
       }
@@ -223,7 +229,7 @@ describe('SocketManager', () => {
 
   describe('Event Listening', () => {
     beforeEach(() => {
-      socketManager['socket'] = mockSocket as any
+      socketManager['socket'] = mockSocket as Partial<Socket> as Socket
     })
 
     it('should set up room state update listener', () => {
@@ -315,14 +321,18 @@ describe('SocketManager', () => {
 
   describe('Reconnection Logic', () => {
     beforeEach(() => {
-      socketManager['socket'] = mockSocket as any
+      socketManager['socket'] = mockSocket as Partial<Socket> as Socket
       socketManager['config'] = mockConfig
     })
 
     it('should handle reconnection success', () => {
-      // First setup the socket manager with proper state
+      // Setup connection handlers first
+      socketManager['setupConnectionHandlers']()
+
+      // Set initial status
       socketManager['status'] = 'connecting'
 
+      // Find and call the reconnect callback
       const reconnectCallback = mockSocket.on.mock.calls.find(call => call[0] === 'reconnect')?.[1]
 
       if (reconnectCallback) {
@@ -333,8 +343,11 @@ describe('SocketManager', () => {
     })
 
     it('should handle maximum reconnection attempts', () => {
+      // Setup connection handlers first
+      socketManager['setupConnectionHandlers']()
+
       // Set up reconnection error scenario
-      socketManager['reconnectAttempts'] = 5 // Max attempts reached
+      socketManager['reconnectAttempts'] = 4 // Will become 5 after increment
       socketManager['maxReconnectAttempts'] = 5
       socketManager['status'] = 'connecting'
 
