@@ -5,29 +5,31 @@ This document provides an overview of the Socket.IO server implementation for re
 ## Quick Start
 
 1. **Start the development server:**
+
    ```bash
    npm run dev
    ```
 
 2. **Connect to a room namespace:**
+
    ```javascript
    // Client-side code example
    import { io } from 'socket.io-client'
-   
+
    const socket = io('/room:abc123', {
      autoConnect: true,
      reconnection: true,
    })
-   
+
    // Join a room as a guest
    socket.emit('join-room', {
      roomId: 'abc123',
      participantName: 'John Doe',
-     role: 'guest'
+     role: 'guest',
    })
-   
+
    // Listen for room state updates
-   socket.on('room-state', (data) => {
+   socket.on('room-state', data => {
      console.log('Room state:', data.room)
      console.log('Participants:', data.participants)
    })
@@ -36,11 +38,13 @@ This document provides an overview of the Socket.IO server implementation for re
 ## Architecture
 
 ### Room-based Namespaces
+
 - **Pattern:** `room:{id}` (e.g., `room:abc123`)
 - **Isolation:** Each room has its own namespace for isolated communication
 - **Validation:** Middleware validates room existence before allowing connections
 
 ### Connection Flow
+
 1. Client connects to room namespace
 2. Middleware validates room exists in Redis
 3. Client emits `join-room` event with participant details
@@ -50,6 +54,7 @@ This document provides an overview of the Socket.IO server implementation for re
 ### Event Types
 
 **Client to Server:**
+
 - `join-room` - Join a room as organizer or guest
 - `leave-room` - Leave the current room
 - `participant-add` - Add a new participant (organizer only)
@@ -58,6 +63,7 @@ This document provides an overview of the Socket.IO server implementation for re
 - `timer-start` - Start presentation timer
 
 **Server to Client:**
+
 - `room-state` - Complete room state with participants
 - `participant-joined` - New participant joined
 - `participant-left` - Participant left the room
@@ -68,6 +74,7 @@ This document provides an overview of the Socket.IO server implementation for re
 ## Configuration
 
 The Socket.IO server is configured with:
+
 - **Connection timeout:** 60 seconds
 - **Ping interval:** 25 seconds
 - **Connection state recovery:** 2 minutes
@@ -85,6 +92,7 @@ The Socket.IO server is configured with:
 ## Testing
 
 Run Socket.IO tests:
+
 ```bash
 npm run test:run src/lib/__tests__/socket.test.ts
 ```
@@ -92,6 +100,7 @@ npm run test:run src/lib/__tests__/socket.test.ts
 ## Scaling
 
 Current implementation supports:
+
 - **Single server instance** (no horizontal scaling for MVP)
 - **Target capacity:** 3,000 concurrent WebSocket connections
 - **100 simultaneous rooms**
@@ -107,6 +116,7 @@ Current implementation supports:
 ## Next Steps
 
 Future enhancements could include:
+
 - Redis Pub/Sub for horizontal scaling
 - Rate limiting for connections
 - Authentication and authorization
