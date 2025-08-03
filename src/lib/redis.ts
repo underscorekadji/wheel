@@ -76,8 +76,18 @@ export async function getRedisClient(): Promise<Redis> {
     redisClient = new Redis(config)
 
     // Setup error handlers
-    redisClient.on('error', error => {
-      console.error('Redis connection error:', error)
+    redisClient.on('error', (error: unknown) => {
+      if (error instanceof Error) {
+        // Categorize error by code if available
+        const code = (error as any).code;
+        if (code === 'ECONNREFUSED' || code === 'ETIMEDOUT' || code === 'EHOSTUNREACH') {
+          console.error(`Redis connection error [${code}]:`, error.message);
+        } else {
+          console.error(`Redis operation error [${code ?? error.name}]:`, error.message);
+        }
+      } else {
+        console.error('Unknown Redis error:', error);
+      }
     })
 
     redisClient.on('connect', () => {
