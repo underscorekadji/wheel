@@ -6,6 +6,9 @@ const nextConfig = {
   },
   // Enable standalone output for Docker production builds
   output: 'standalone',
+  telemetry: {
+    enabled: false,
+  },
 }
 
 export default nextConfig
