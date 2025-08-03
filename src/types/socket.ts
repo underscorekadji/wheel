@@ -5,6 +5,8 @@
  * used in the room-based namespace communication system.
  */
 
+import type { Participant } from './participant'
+
 /**
  * Socket.IO event names used in room communication
  */
@@ -82,23 +84,6 @@ export interface RoomStateUpdateEvent extends BaseSocketEvent {
   timerState: TimerState
   sessionActive: boolean
 }
-
-/**
- * Participant data structure
- */
-export interface Participant {
-  id: string
-  name: string
-  status: ParticipantStatus
-  joinedAt: string
-  presentedAt?: string
-  speakingTime?: number
-}
-
-/**
- * Participant status lifecycle
- */
-export type ParticipantStatus = 'queued' | 'active' | 'finished' | 'disabled'
 
 /**
  * Participant update event for individual participant changes

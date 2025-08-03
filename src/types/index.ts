@@ -7,3 +7,11 @@
 
 export * from './room'
 export * from './participant'
+
+/**
+ * Global augmentation for socket server caching
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var __socketHttpServer: import('http').Server | undefined
+}

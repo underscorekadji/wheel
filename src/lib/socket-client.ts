@@ -8,6 +8,11 @@ import type {
   WheelSpinEvent,
   TimerUpdateEvent,
   RoomMessageEvent,
+  ConnectionEvent,
+  UserConnectionEvent,
+  UserDisconnectionEvent,
+  ErrorEvent,
+  ConnectionErrorEvent,
 } from '@/types/socket'
 
 /**
@@ -218,7 +223,10 @@ export class SocketManager {
   /**
    * Generic emit method
    */
-  private emit(event: keyof SocketEventMap, data: any): void {
+  private emit<K extends keyof SocketEventMap>(
+    event: K,
+    data: Omit<Parameters<SocketEventMap[K]>[0], 'roomId' | 'timestamp'>
+  ): void {
     if (!this.socket?.connected) {
       console.warn(`Cannot emit ${event}: socket not connected`)
       return
@@ -271,30 +279,30 @@ export class SocketManager {
   /**
    * Listen for connection events
    */
-  onConnection(callback: (data: any) => void): void {
+  onConnection(callback: (data: ConnectionEvent) => void): void {
     this.on('connected', callback)
   }
 
   /**
    * Listen for user connection events
    */
-  onUserConnected(callback: (data: any) => void): void {
+  onUserConnected(callback: (data: UserConnectionEvent) => void): void {
     this.on('user_connected', callback)
   }
 
   /**
    * Listen for user disconnection events
    */
-  onUserDisconnected(callback: (data: any) => void): void {
+  onUserDisconnected(callback: (data: UserDisconnectionEvent) => void): void {
     this.on('user_disconnected', callback)
   }
 
   /**
    * Listen for errors
    */
-  onError(callback: (data: any) => void): void {
-    this.on('error', callback)
-    this.on('connection_error', callback)
+  onError(callback: (data: ErrorEvent | ConnectionErrorEvent) => void): void {
+    this.on('error', callback as (data: ErrorEvent) => void)
+    this.on('connection_error', callback as (data: ConnectionErrorEvent) => void)
   }
 
   /**
@@ -307,7 +315,7 @@ export class SocketManager {
     }
 
     // Use string casting to bypass Socket.IO type restrictions for custom events
-    this.socket.on(event as string, callback as any)
+    this.socket.on(event as string, callback as (...args: unknown[]) => void)
   }
 
   /**
@@ -317,7 +325,7 @@ export class SocketManager {
     if (!this.socket) return
 
     if (callback) {
-      this.socket.off(event as string, callback as any)
+      this.socket.off(event as string, callback as (...args: unknown[]) => void)
     } else {
       this.socket.off(event as string)
     }

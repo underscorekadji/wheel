@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server'
 import { Server as SocketIOServer, Socket } from 'socket.io'
+import { createServer } from 'http'
 import { setSocketServer, isSocketServerInitialized } from '@/lib/socket-server'
+import type {
+  RoomStateUpdateEvent,
+  ParticipantUpdateEvent,
+  WheelSpinEvent,
+  TimerUpdateEvent,
+  RoomMessageEvent,
+} from '@/types/socket'
 
 /**
  * GET /api/socket - Initialize Socket.IO server
@@ -86,26 +94,40 @@ function initializeSocketServer(): SocketIOServer {
 /**
  * Get or create HTTP server for Socket.IO
  *
+ * This function implements a singleton pattern for the HTTP server to prevent
+ * multiple server instances during Next.js development hot reloads.
+ *
  * @returns HTTP server instance
  */
 function getOrCreateHttpServer() {
-  // Check if we already have a server in the global scope
-  if ((global as any).__socketHttpServer) {
-    return (global as any).__socketHttpServer
+  // Check if we already have a server in the global scope (dev mode persistence)
+  if (globalThis.__socketHttpServer) {
+    return globalThis.__socketHttpServer
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { createServer } = require('http')
   const httpServer = createServer()
 
-  // Store in global scope for reuse
-  ;(global as any).__socketHttpServer = httpServer
+  // Store in global scope for reuse during development
+  // Note: This prevents multiple HTTP servers during Next.js hot reloads
+  globalThis.__socketHttpServer = httpServer
 
   // Start the server on a dedicated port for Socket.IO
-  const socketPort = parseInt(process.env.SOCKET_PORT || '3001')
+  const socketPort = parseInt(process.env.SOCKET_PORT || '3001', 10)
+
   httpServer.listen(socketPort, () => {
     console.log(`Socket.IO HTTP server listening on port ${socketPort}`)
   })
+
+  // Handle server cleanup on process termination (production only)
+  if (process.env.NODE_ENV === 'production') {
+    process.on('SIGTERM', () => {
+      if (httpServer && typeof httpServer.close === 'function') {
+        httpServer.close(() => {
+          delete globalThis.__socketHttpServer
+        })
+      }
+    })
+  }
 
   return httpServer
 }
@@ -180,7 +202,7 @@ function setupRoomNamespaces(io: SocketIOServer) {
  */
 function setupRoomEventHandlers(socket: Socket, roomId: string) {
   // Handle room state updates (participants, wheel state, timer, etc.)
-  socket.on('room_state_update', (data: any) => {
+  socket.on('room_state_update', (data: Omit<RoomStateUpdateEvent, 'roomId' | 'timestamp'>) => {
     try {
       console.log(`Room state update in ${roomId}:`, data)
 
@@ -200,8 +222,8 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
     }
   })
 
-  // Handle participant list updates
-  socket.on('participant_update', (data: any) => {
+  // Handle participant updates (add, remove, enable/disable)
+  socket.on('participant_update', (data: Omit<ParticipantUpdateEvent, 'roomId' | 'timestamp'>) => {
     try {
       console.log(`Participant update in ${roomId}:`, data)
 
@@ -222,7 +244,7 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
   })
 
   // Handle wheel spin events
-  socket.on('wheel_spin', (data: any) => {
+  socket.on('wheel_spin', (data: Omit<WheelSpinEvent, 'roomId' | 'timestamp'>) => {
     try {
       console.log(`Wheel spin in ${roomId}:`, data)
 
@@ -243,7 +265,7 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
   })
 
   // Handle timer events
-  socket.on('timer_update', (data: any) => {
+  socket.on('timer_update', (data: Omit<TimerUpdateEvent, 'roomId' | 'timestamp'>) => {
     try {
       console.log(`Timer update in ${roomId}:`, data)
 
@@ -264,7 +286,7 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
   })
 
   // Handle chat/messaging (optional for organizer-guest communication)
-  socket.on('room_message', (data: any) => {
+  socket.on('room_message', (data: Omit<RoomMessageEvent, 'roomId' | 'timestamp'>) => {
     try {
       console.log(`Room message in ${roomId}:`, data)
 
