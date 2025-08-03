@@ -78,13 +78,11 @@ export async function getRedisClient(): Promise<Redis> {
     // Setup error handlers
     redisClient.on('error', (error: unknown) => {
       if (error instanceof Error) {
-        // Categorize error by code if available
-        const code = (error as any).code
-        if (code === 'ECONNREFUSED' || code === 'ETIMEDOUT' || code === 'EHOSTUNREACH') {
-          console.error(`Redis connection error [${code}]:`, error.message)
-        } else {
-          console.error(`Redis operation error [${code ?? error.name}]:`, error.message)
-        }
+        const { code, message, name } = error as Error & { code?: string }
+        const connectionErrors = ['ECONNREFUSED', 'ETIMEDOUT', 'EHOSTUNREACH']
+        const errorType = code ?? name
+        const prefix = connectionErrors.includes(code ?? '') ? 'connection' : 'operation'
+        console.error(`Redis ${prefix} error [${errorType}]:`, message)
       } else {
         console.error('Unknown Redis error:', error)
       }
@@ -190,10 +188,11 @@ export async function getRoom(roomId: string): Promise<Room | null> {
       roomData.expiresAt = new Date(roomData.expiresAt)
 
       // Parse dates in selection history
-      roomData.selectionHistory = roomData.selectionHistory.map(entry => ({
-        ...entry,
-        selectedAt: new Date(entry.selectedAt),
-      }))
+      roomData.selectionHistory =
+        roomData.selectionHistory?.map(entry => ({
+          ...entry,
+          selectedAt: new Date(entry.selectedAt),
+        })) || []
 
       console.log(`Room ${roomId} retrieved successfully`)
       return roomData
