@@ -20,6 +20,7 @@ describe('Validation Functions', () => {
         joinedAt: new Date('2024-01-01T10:00:00Z'),
         lastUpdatedAt: new Date('2024-01-01T10:00:00Z'),
         lastSelectedAt: null,
+        isConnected: true,
       },
     ],
     organizerId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',

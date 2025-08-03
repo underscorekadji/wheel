@@ -65,4 +65,10 @@ export interface Participant {
    * Null if never selected
    */
   lastSelectedAt: Date | null
+
+  /**
+   * Whether the participant is currently connected via WebSocket
+   * Used for real-time status indicators
+   */
+  isConnected: boolean
 }

@@ -17,7 +17,7 @@ const RoomStatusSchema = z.enum(['waiting', 'active', 'paused', 'completed', 'ex
  * Schema for Participant validation
  */
 const ParticipantSchema = z.object({
-  id: z.uuid(),
+  id: z.string().uuid(),
   name: z.string().min(1),
   status: z.enum(['queued', 'active', 'finished', 'disabled']),
   role: z.enum(['organizer', 'guest']),
@@ -27,6 +27,7 @@ const ParticipantSchema = z.object({
     .string()
     .transform(str => new Date(str))
     .nullable(),
+  isConnected: z.boolean(),
 })
 
 /**
@@ -110,6 +111,26 @@ export function safeValidateRoom(
  */
 export function isValidRoom(data: unknown): data is Room {
   return RoomSchema.safeParse(data).success
+}
+
+/**
+ * Safe validation function for Participant data with error handling
+ *
+ * @param data - Participant data to validate
+ * @returns Object with success flag and either data or error
+ */
+export function safeValidateParticipant(
+  data: unknown
+):
+  | { success: true; data: z.infer<typeof ParticipantSchema>; error: null }
+  | { success: false; data: null; error: z.ZodError } {
+  const result = ParticipantSchema.safeParse(data)
+
+  if (result.success) {
+    return { success: true, data: result.data, error: null }
+  } else {
+    return { success: false, data: null, error: result.error }
+  }
 }
 
 export { RoomSchema, ParticipantSchema, WheelConfigSchema, SelectionHistoryEntrySchema }
