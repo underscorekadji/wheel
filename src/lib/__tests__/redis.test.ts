@@ -34,11 +34,11 @@ vi.mock('ioredis', () => {
 
 // Sample room data for testing
 const mockRoom: Room = {
-  id: 'test-room-123',
+  id: '550e8400-e29b-41d4-a716-446655440000',
   name: 'Test Room',
   status: 'waiting',
   participants: [],
-  organizerId: 'organizer-123',
+  organizerId: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
   createdAt: new Date('2024-01-01T10:00:00Z'),
   lastUpdatedAt: new Date('2024-01-01T10:00:00Z'),
   expiresAt: new Date('2024-01-01T18:00:00Z'),
@@ -51,10 +51,10 @@ const mockRoom: Room = {
   },
   selectionHistory: [
     {
-      id: 'selection-1',
-      participantId: 'participant-1',
+      id: '6ba7b811-9dad-11d1-80b4-00c04fd430c8',
+      participantId: '6ba7b812-9dad-11d1-80b4-00c04fd430c8',
       participantName: 'John Doe',
-      initiatedBy: 'organizer-123',
+      initiatedBy: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
       selectedAt: new Date('2024-01-01T11:00:00Z'),
       spinDuration: 3000,
     },
@@ -113,9 +113,9 @@ describe('Redis Helper Functions', () => {
     })
 
     it('should generate correct room key', () => {
-      const roomId = 'test-room-123'
+      const roomId = '550e8400-e29b-41d4-a716-446655440000'
       const key = getRoomKey(roomId)
-      expect(key).toBe('room:test-room-123')
+      expect(key).toBe('room:550e8400-e29b-41d4-a716-446655440000')
     })
   })
 
@@ -149,7 +149,7 @@ describe('Redis Helper Functions', () => {
 
       expect(result).toBe(true)
       expect(mockRedisInstance.setex).toHaveBeenCalledWith(
-        'room:test-room-123',
+        'room:550e8400-e29b-41d4-a716-446655440000',
         ROOM_TTL_SECONDS,
         JSON.stringify(mockRoom)
       )
@@ -186,7 +186,9 @@ describe('Redis Helper Functions', () => {
           status: mockRoom.status,
         })
       )
-      expect(mockRedisInstance.get).toHaveBeenCalledWith('room:test-room-123')
+      expect(mockRedisInstance.get).toHaveBeenCalledWith(
+        'room:550e8400-e29b-41d4-a716-446655440000'
+      )
 
       // Verify dates are properly parsed
       expect(result?.createdAt).toBeInstanceOf(Date)
@@ -225,7 +227,9 @@ describe('Redis Helper Functions', () => {
       const result = await roomExists(mockRoom.id)
 
       expect(result).toBe(true)
-      expect(mockRedisInstance.exists).toHaveBeenCalledWith('room:test-room-123')
+      expect(mockRedisInstance.exists).toHaveBeenCalledWith(
+        'room:550e8400-e29b-41d4-a716-446655440000'
+      )
     })
 
     it('should return false when room does not exist', async () => {
@@ -252,7 +256,9 @@ describe('Redis Helper Functions', () => {
       const result = await deleteRoom(mockRoom.id)
 
       expect(result).toBe(true)
-      expect(mockRedisInstance.del).toHaveBeenCalledWith('room:test-room-123')
+      expect(mockRedisInstance.del).toHaveBeenCalledWith(
+        'room:550e8400-e29b-41d4-a716-446655440000'
+      )
     })
 
     it('should return false when room does not exist for deletion', async () => {
@@ -277,7 +283,9 @@ describe('Redis Helper Functions', () => {
       const result = await getRoomTTL(mockRoom.id)
 
       expect(result).toBe(3600)
-      expect(mockRedisInstance.ttl).toHaveBeenCalledWith('room:test-room-123')
+      expect(mockRedisInstance.ttl).toHaveBeenCalledWith(
+        'room:550e8400-e29b-41d4-a716-446655440000'
+      )
     })
 
     it('should return -1 when key exists but has no TTL', async () => {

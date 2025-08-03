@@ -7,6 +7,7 @@
 
 import Redis from 'ioredis'
 import type { Room } from '@/types/room'
+import { safeValidateRoom } from './validation'
 
 /**
  * Redis TTL in seconds (8 hours = 8 * 60 * 60 = 28800 seconds)
@@ -180,19 +181,20 @@ export async function getRoom(roomId: string): Promise<Room | null> {
     }
 
     try {
-      const roomData = JSON.parse(serializedData) as Room
+      // Parse JSON and validate the structure
+      const parsedData = JSON.parse(serializedData)
+      const validationResult = safeValidateRoom(parsedData)
 
-      // Parse Date objects from strings
-      roomData.createdAt = new Date(roomData.createdAt)
-      roomData.lastUpdatedAt = new Date(roomData.lastUpdatedAt)
-      roomData.expiresAt = new Date(roomData.expiresAt)
+      if (!validationResult.success) {
+        console.error(`Room data validation failed for ${roomId}:`, validationResult.error.issues)
+        throw new Error(
+          `Invalid room data structure: ${validationResult.error.issues
+            .map(issue => `${issue.path.join('.')}: ${issue.message}`)
+            .join(', ')}`
+        )
+      }
 
-      // Parse dates in selection history
-      roomData.selectionHistory =
-        roomData.selectionHistory?.map(entry => ({
-          ...entry,
-          selectedAt: new Date(entry.selectedAt),
-        })) || []
+      const roomData = validationResult.data
 
       console.log(`Room ${roomId} retrieved successfully`)
       return roomData
