@@ -79,14 +79,14 @@ export async function getRedisClient(): Promise<Redis> {
     redisClient.on('error', (error: unknown) => {
       if (error instanceof Error) {
         // Categorize error by code if available
-        const code = (error as any).code;
+        const code = (error as any).code
         if (code === 'ECONNREFUSED' || code === 'ETIMEDOUT' || code === 'EHOSTUNREACH') {
-          console.error(`Redis connection error [${code}]:`, error.message);
+          console.error(`Redis connection error [${code}]:`, error.message)
         } else {
-          console.error(`Redis operation error [${code ?? error.name}]:`, error.message);
+          console.error(`Redis operation error [${code ?? error.name}]:`, error.message)
         }
       } else {
-        console.error('Unknown Redis error:', error);
+        console.error('Unknown Redis error:', error)
       }
     })
 
