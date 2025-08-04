@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Server as SocketIOServer, Socket } from 'socket.io'
-import { createServer } from 'http'
 import { setSocketServer, isSocketServerInitialized } from '@/lib/socket-server'
+import { getOrCreateHttpServer } from '@/lib/http-server'
 import type {
   RoomStateUpdateEvent,
   ParticipantUpdateEvent,
@@ -89,47 +89,6 @@ function initializeSocketServer(): SocketIOServer {
 
   console.log('Socket.IO server initialized successfully with room namespaces')
   return socketServer
-}
-
-/**
- * Get or create HTTP server for Socket.IO
- *
- * This function implements a singleton pattern for the HTTP server to prevent
- * multiple server instances during Next.js development hot reloads.
- *
- * @returns HTTP server instance
- */
-function getOrCreateHttpServer() {
-  // Check if we already have a server in the global scope (dev mode persistence)
-  if (globalThis.__socketHttpServer) {
-    return globalThis.__socketHttpServer
-  }
-
-  const httpServer = createServer()
-
-  // Store in global scope for reuse during development
-  // Note: This prevents multiple HTTP servers during Next.js hot reloads
-  globalThis.__socketHttpServer = httpServer
-
-  // Start the server on a dedicated port for Socket.IO
-  const socketPort = parseInt(process.env.SOCKET_PORT || '3001', 10)
-
-  httpServer.listen(socketPort, () => {
-    console.log(`Socket.IO HTTP server listening on port ${socketPort}`)
-  })
-
-  // Handle server cleanup on process termination (production only)
-  if (process.env.NODE_ENV === 'production') {
-    process.on('SIGTERM', () => {
-      if (httpServer && typeof httpServer.close === 'function') {
-        httpServer.close(() => {
-          delete globalThis.__socketHttpServer
-        })
-      }
-    })
-  }
-
-  return httpServer
 }
 
 /**
