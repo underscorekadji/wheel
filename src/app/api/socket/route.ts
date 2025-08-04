@@ -138,59 +138,62 @@ function getOrCreateHttpServer() {
  * @param io - Socket.IO server instance
  */
 function setupRoomNamespaces(io: SocketIOServer) {
-  // Dynamic namespace for room:{id} pattern
-  io.of(/^\/room:[a-zA-Z0-9_-]+$/).on('connection', socket => {
-    const namespace = socket.nsp.name
-    const roomId = namespace.replace('/room:', '')
+  // Dynamic namespace for room:{id} pattern (UUID format only)
+  io.of(/^\/room:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).on(
+    'connection',
+    socket => {
+      const namespace = socket.nsp.name
+      const roomId = namespace.replace('/room:', '')
 
-    console.log(`Client connected to room namespace: ${namespace} (${socket.id})`)
+      console.log(`Client connected to room namespace: ${namespace} (${socket.id})`)
 
-    // Join the room automatically
-    socket.join(roomId)
+      // Join the room automatically
+      socket.join(roomId)
 
-    // Handle room-specific events
-    setupRoomEventHandlers(socket, roomId)
+      // Handle room-specific events
+      setupRoomEventHandlers(socket, roomId)
 
-    // Handle disconnection
-    socket.on('disconnect', reason => {
-      console.log(`Client disconnected from room ${roomId} (${socket.id}): ${reason}`)
+      // Handle disconnection
+      socket.on('disconnect', reason => {
+        console.log(`Client disconnected from room ${roomId} (${socket.id}): ${reason}`)
 
-      // Notify other clients in the room about disconnection
-      socket.to(roomId).emit('user_disconnected', {
+        // Notify other clients in the room about disconnection
+        socket.to(roomId).emit('user_disconnected', {
+          socketId: socket.id,
+          roomId,
+          timestamp: new Date().toISOString(),
+          reason,
+        })
+      })
+
+      // Handle connection errors
+      socket.on('error', error => {
+        console.error(`Socket error in room ${roomId} (${socket.id}):`, error)
+
+        // Emit error to the client
+        socket.emit('connection_error', {
+          error: 'Socket connection error',
+          roomId,
+          timestamp: new Date().toISOString(),
+        })
+      })
+
+      // Send welcome message to the connected client
+      socket.emit('connected', {
+        message: `Connected to room ${roomId}`,
+        roomId,
+        socketId: socket.id,
+        timestamp: new Date().toISOString(),
+      })
+
+      // Notify other clients in the room about new connection
+      socket.to(roomId).emit('user_connected', {
         socketId: socket.id,
         roomId,
         timestamp: new Date().toISOString(),
-        reason,
       })
-    })
-
-    // Handle connection errors
-    socket.on('error', error => {
-      console.error(`Socket error in room ${roomId} (${socket.id}):`, error)
-
-      // Emit error to the client
-      socket.emit('connection_error', {
-        error: 'Socket connection error',
-        roomId,
-        timestamp: new Date().toISOString(),
-      })
-    })
-
-    // Send welcome message to the connected client
-    socket.emit('connected', {
-      message: `Connected to room ${roomId}`,
-      roomId,
-      socketId: socket.id,
-      timestamp: new Date().toISOString(),
-    })
-
-    // Notify other clients in the room about new connection
-    socket.to(roomId).emit('user_connected', {
-      socketId: socket.id,
-      roomId,
-      timestamp: new Date().toISOString(),
-    })
-  })
+    }
+  )
 }
 
 /**

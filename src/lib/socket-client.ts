@@ -28,6 +28,7 @@ export class SocketManager {
   private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
+  private reconnectTimeoutId: NodeJS.Timeout | null = null
 
   /**
    * Connect to a room namespace
@@ -321,7 +322,7 @@ export class SocketManager {
     }
 
     // Listen for typed events using Socket.IO's generic event map
-    this.socket.on(event, callback)
+    this.socket.on(event as string, callback as (...args: any[]) => void)
   }
 
   /**

@@ -73,11 +73,11 @@ describe('Socket Types', () => {
     describe('isValid', () => {
       it('should validate correct namespace format', () => {
         const validNamespaces = [
-          '/room:test-room-123',
           '/room:550e8400-e29b-41d4-a716-446655440000',
-          '/room:room_123',
-          '/room:a',
-          '/room:123',
+          '/room:123e4567-e89b-12d3-a456-426614174000',
+          '/room:a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+          '/room:00000000-0000-0000-0000-000000000000',
+          '/room:FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF',
         ]
 
         validNamespaces.forEach(namespace => {
@@ -96,6 +96,13 @@ describe('Socket Types', () => {
           '/room: with-space',
           '/room:test space',
           '/room:test/slash',
+          '/room:test-room-123', // Not UUID format
+          '/room:room_123', // Not UUID format
+          '/room:a', // Not UUID format
+          '/room:123', // Not UUID format
+          '/room:550e8400-e29b-41d4-a716-44665544000', // Missing digit
+          '/room:550e8400-e29b-41d4-a716-44665544000x', // Extra character
+          '/room:550e8400-e29b-41d4-a716', // Too short
         ]
 
         invalidNamespaces.forEach(namespace => {
@@ -104,10 +111,15 @@ describe('Socket Types', () => {
       })
 
       it('should handle edge cases', () => {
-        expect(RoomNamespace.isValid('/room:a')).toBe(true) // Single character
-        expect(RoomNamespace.isValid('/room:123')).toBe(true) // Numbers only
-        expect(RoomNamespace.isValid('/room:test-')).toBe(true) // Ending with dash
-        expect(RoomNamespace.isValid('/room:_test')).toBe(true) // Starting with underscore
+        // All should be false since we only accept UUID format
+        expect(RoomNamespace.isValid('/room:a')).toBe(false) // Single character - not UUID
+        expect(RoomNamespace.isValid('/room:123')).toBe(false) // Numbers only - not UUID
+        expect(RoomNamespace.isValid('/room:test-')).toBe(false) // Ending with dash - not UUID
+        expect(RoomNamespace.isValid('/room:_test')).toBe(false) // Starting with underscore - not UUID
+
+        // Test case sensitivity (should accept both)
+        expect(RoomNamespace.isValid('/room:550e8400-e29b-41d4-a716-446655440000')).toBe(true) // Lowercase
+        expect(RoomNamespace.isValid('/room:550E8400-E29B-41D4-A716-446655440000')).toBe(true) // Uppercase
       })
     })
   })

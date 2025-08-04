@@ -167,8 +167,10 @@ describe('Socket.IO API Route', () => {
 
       await GET()
 
-      // Should set up dynamic namespace for room:{id} pattern
-      expect(mockOf).toHaveBeenCalledWith(/^\/room:[\w-]+$/)
+      // Should set up dynamic namespace for room:{id} pattern (UUID format only)
+      expect(mockOf).toHaveBeenCalledWith(
+        /^\/room:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      )
     })
 
     it('should handle production CORS configuration', async () => {

@@ -23,7 +23,7 @@ describe('SocketManager', () => {
   let socketManager: SocketManager
   const mockConfig: SocketConfig = {
     url: 'http://localhost:3001',
-    roomId: 'test-room-123',
+    roomId: '550e8400-e29b-41d4-a716-446655440000',
     userId: 'user-456',
     userName: 'Test User',
     role: 'organizer',
@@ -53,7 +53,7 @@ describe('SocketManager', () => {
       await socketManager.connect(mockConfig)
 
       expect(io).toHaveBeenCalledWith(
-        'http://localhost:3001/room:test-room-123',
+        'http://localhost:3001/room:550e8400-e29b-41d4-a716-446655440000',
         expect.objectContaining({
           transports: ['websocket', 'polling'],
           autoConnect: true,
