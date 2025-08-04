@@ -218,9 +218,9 @@ export class RoomNamespace {
   /**
    * Validate namespace format
    * @param namespace - Namespace string to validate
-   * @returns True if valid namespace format
+   * @returns True if valid namespace format (expects UUID room ID)
    */
   static isValid(namespace: string): boolean {
-    return /^\/room:[\w-]+$/.test(namespace)
+    return /^\/room:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(namespace)
   }
 }

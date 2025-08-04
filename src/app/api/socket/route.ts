@@ -139,7 +139,7 @@ function getOrCreateHttpServer() {
  */
 function setupRoomNamespaces(io: SocketIOServer) {
   // Dynamic namespace for room:{id} pattern
-  io.of(/^\/room:[\w-]+$/).on('connection', socket => {
+  io.of(/^\/room:[a-zA-Z0-9_-]+$/).on('connection', socket => {
     const namespace = socket.nsp.name
     const roomId = namespace.replace('/room:', '')
 

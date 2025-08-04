@@ -173,7 +173,13 @@ export class SocketManager {
       return
     }
 
-    setTimeout(() => {
+    // Clear any existing pending reconnection timeout
+    if (this.reconnectTimeoutId) {
+      clearTimeout(this.reconnectTimeoutId)
+      this.reconnectTimeoutId = null
+    }
+
+    this.reconnectTimeoutId = setTimeout(() => {
       if (this.config && this.status !== 'connected') {
         console.log(
           `Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}`
@@ -314,8 +320,8 @@ export class SocketManager {
       return
     }
 
-    // Use string casting to bypass Socket.IO type restrictions for custom events
-    this.socket.on(event as string, callback as (...args: unknown[]) => void)
+    // Listen for typed events using Socket.IO's generic event map
+    this.socket.on(event, callback)
   }
 
   /**
