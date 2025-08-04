@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Server as SocketIOServer, Socket } from 'socket.io'
 import { setSocketServer, isSocketServerInitialized } from '@/lib/socket-server'
+import { startRedisCleanupJob } from '@/lib/redis-cleanup'
 import type {
   RoomStateUpdateEvent,
   ParticipantUpdateEvent,
@@ -27,6 +28,9 @@ export async function GET() {
       // Initialize Socket.IO server
       const server = initializeSocketServer()
       setSocketServer(server)
+
+      // Start Redis cleanup job for automatic expired key cleanup
+      startRedisCleanupJob()
     }
 
     return NextResponse.json({
