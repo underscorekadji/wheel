@@ -15,6 +15,14 @@
     "test:run": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
+    "check": "npm run format:check && npm run lint && npm run type-check",
+    "verify": "npm run check && npm run test:run && npm run build",
+    "docker": "cd docker/dev && docker compose up -d",
+    "docker:down": "cd docker/dev && docker compose down -v",
+    "clean": "rm -rf .next node_modules/.cache coverage",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:outdated": "npm outdated",
+    "deps:update": "npm update && npm audit fix",
     "prepare": "husky"
   },
   "dependencies": {

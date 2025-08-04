@@ -1,6 +1,7 @@
 # Wheel - Presenter Selection App
 
-[![CI/CD Pipeline](https://github.com/underscorekadji/wheel/actions/workflows/ci.yml/badge.svg)](https://github.com/underscorekadji/wheel/actions/workflows/ci.yml)
+[![PR Checks](https://github.com/underscorekadji/wheel/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/underscorekadji/wheel/actions/workflows/pr-checks.yml)
+[![Main Deploy](https://github.com/underscorekadji/wheel/actions/workflows/main-deploy.yml/badge.svg)](https://github.com/underscorekadji/wheel/actions/workflows/main-deploy.yml)
 
 Real-time spinning wheel app for presenter selection with **Next.js 15 (App Router) + Socket.IO + Redis**.
 
@@ -55,7 +56,7 @@ cd wheel
 2. Start development services:
 
 ```bash
-docker compose -f docker/dev/docker-compose.yml up -d
+npm run docker
 ```
 
 3. Access the application:
@@ -71,7 +72,7 @@ docker compose -f docker/dev/docker-compose.yml logs -f
 5. Stop services:
 
 ```bash
-docker compose -f docker/dev/docker-compose.yml down
+npm run docker:down
 ```
 
 ### Docker Production
@@ -108,14 +109,32 @@ Use the test script to quickly validate your Docker setup:
 
 ## 📝 Available Scripts
 
+### Development
+
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
+
+### Code Quality
+
+- `npm run format` - Format code with Prettier
 - `npm run lint` - Run ESLint
 - `npm run lint:fix` - Fix ESLint issues
-- `npm run format` - Format code with Prettier
-- `npm run format:check` - Check code formatting
 - `npm run type-check` - Check TypeScript types
+- `npm run check` - Run all quality checks (format + lint + type-check)
+
+### Testing
+
+- `npm run test` - Run tests in watch mode
+- `npm run test:run` - Run tests once
+- `npm run test:coverage` - Run tests with coverage
+
+### Docker & CI
+
+- `npm run docker` - Start development Docker services
+- `npm run docker:down` - Stop development Docker services
+- `npm run verify` - Run full CI pipeline locally (check + test + build)
+- `npm run clean` - Clean build artifacts and caches
 
 ## 🏗️ Tech Stack
 
@@ -169,9 +188,11 @@ npm run prepare
 
 If a commit is blocked due to pre-commit check failures:
 
-1. **Formatting issues**: Run `npm run format` to auto-fix formatting
-2. **Linting issues**: Run `npm run lint:fix` to auto-fix linting issues, or manually fix remaining issues
-3. **Type errors**: Manually fix TypeScript type errors reported by `npm run type-check`
+1. **Quick fix**: `npm run format && npm run lint:fix`
+2. **Check all issues**: `npm run check`
+3. **Type errors**: Fix TypeScript errors manually
+
+**💡 Pro tip**: Run `npm run verify` before pushing to ensure your changes pass all CI checks locally.
 
 After fixing the issues, stage your changes and commit again.
 
