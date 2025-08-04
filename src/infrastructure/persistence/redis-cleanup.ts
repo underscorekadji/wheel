@@ -8,9 +8,9 @@
  * application-level cleanup (memory caches and Socket namespaces).
  */
 
-import { getRedisClient, ROOM_KEY_PREFIX } from './redis'
-import { clearRoomStateCache, clearRoomDebounce } from './room-state-broadcaster'
-import { getSocketServer } from './socket-server'
+import { getRedisClient, ROOM_KEY_PREFIX } from './redis-client'
+import { clearRoomStateCache, clearRoomDebounce } from '../communication/room-state-broadcaster'
+import { getSocketServer } from '../communication/socket-server'
 
 /**
  * Configuration for Redis cleanup job

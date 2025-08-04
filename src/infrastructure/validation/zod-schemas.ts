@@ -6,12 +6,13 @@
  */
 
 import { z } from 'zod'
-import type { Room } from '@/types/room'
+import type { Room } from '@/domain/compatibility-types'
+import { RoomStatusEnum, ParticipantStatusEnum, ParticipantRoleEnum } from '@/domain'
 
 /**
  * Schema for RoomStatus enum validation
  */
-const RoomStatusSchema = z.enum(['waiting', 'active', 'paused', 'completed', 'expired'])
+const RoomStatusSchema = z.nativeEnum(RoomStatusEnum)
 
 /**
  * Schema for Participant validation
@@ -19,8 +20,8 @@ const RoomStatusSchema = z.enum(['waiting', 'active', 'paused', 'completed', 'ex
 const ParticipantSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1),
-  status: z.enum(['queued', 'active', 'finished', 'disabled']),
-  role: z.enum(['organizer', 'guest']),
+  status: z.nativeEnum(ParticipantStatusEnum),
+  role: z.nativeEnum(ParticipantRoleEnum),
   joinedAt: z.string().transform(str => new Date(str)),
   lastUpdatedAt: z.string().transform(str => new Date(str)),
   lastSelectedAt: z

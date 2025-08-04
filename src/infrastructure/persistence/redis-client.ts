@@ -6,8 +6,8 @@
  */
 
 import Redis from 'ioredis'
-import type { Room } from '@/types/room'
-import { safeValidateRoom } from './validation'
+import type { Room } from '@/domain/compatibility-types'
+import { safeValidateRoom } from '../validation/zod-schemas'
 
 /**
  * Redis TTL in seconds (8 hours = 8 * 60 * 60 = 28800 seconds)

@@ -5,7 +5,7 @@
  * used in the room-based namespace communication system.
  */
 
-import type { Participant } from './participant'
+import type { Participant } from '@/domain/compatibility-types'
 
 /**
  * Socket.IO event names used in room communication
