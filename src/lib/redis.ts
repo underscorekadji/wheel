@@ -90,15 +90,15 @@ export async function getRedisClient(): Promise<Redis> {
     })
 
     redisClient.on('connect', () => {
-      console.log('Redis connected successfully')
+      console.info('Redis connected successfully')
     })
 
     redisClient.on('ready', () => {
-      console.log('Redis ready for operations')
+      console.info('Redis ready for operations')
     })
 
     redisClient.on('close', () => {
-      console.log('Redis connection closed')
+      console.info('Redis connection closed')
     })
 
     // Test the connection
@@ -148,7 +148,6 @@ export async function setRoom(roomId: string, roomData: Room): Promise<boolean> 
       return false
     }
 
-    console.log(`Room ${roomId} stored successfully with TTL ${ROOM_TTL_SECONDS}s`)
     return true
   } catch (error) {
     console.error(`Error storing room ${roomId}:`, error)
@@ -176,7 +175,6 @@ export async function getRoom(roomId: string): Promise<Room | null> {
     const serializedData = await client.get(key)
 
     if (!serializedData) {
-      console.log(`Room ${roomId} not found or expired`)
       return null
     }
 
@@ -196,7 +194,6 @@ export async function getRoom(roomId: string): Promise<Room | null> {
 
       const roomData = validationResult.data
 
-      console.log(`Room ${roomId} retrieved successfully`)
       return roomData
     } catch (parseError) {
       console.error(`Error parsing room data for ${roomId}:`, parseError)
@@ -249,10 +246,8 @@ export async function deleteRoom(roomId: string): Promise<boolean> {
     const deleted = await client.del(key)
 
     if (deleted === 1) {
-      console.log(`Room ${roomId} deleted successfully`)
       return true
     } else {
-      console.log(`Room ${roomId} was not found for deletion`)
       return false
     }
   } catch (error) {
@@ -296,7 +291,7 @@ export async function closeRedisConnection(): Promise<void> {
     try {
       await redisClient.quit()
       redisClient = null
-      console.log('Redis connection closed successfully')
+      console.info('Redis connection closed successfully')
     } catch (error) {
       console.error('Error closing Redis connection:', error)
       throw new Error(
