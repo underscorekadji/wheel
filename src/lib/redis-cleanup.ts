@@ -134,7 +134,7 @@ async function cleanupSocketNamespaces(roomIds: string[]): Promise<number> {
     try {
       const namespaceName = `/room:${roomId}`
 
-      // Check if namespace exists
+      // Check if namespace exists using private API (no public alternative available)
       const namespace = io._nsps.get(namespaceName)
       if (namespace) {
         // Disconnect all sockets in the namespace
@@ -143,7 +143,11 @@ async function cleanupSocketNamespaces(roomIds: string[]): Promise<number> {
           socket.disconnect(true)
         }
 
-        // Remove the namespace
+        // Remove all event listeners to prevent memory leaks
+        namespace.removeAllListeners()
+
+        // Remove the namespace from internal map
+        // WARNING: This uses Socket.IO private API (_nsps) and may break in future versions
         io._nsps.delete(namespaceName)
         clearedCount++
 
@@ -218,8 +222,10 @@ export function startRedisCleanupJob(): void {
 
   console.info('Starting Redis cleanup job...')
 
-  // Run initial cleanup immediately
-  performCleanup()
+  // Run initial cleanup immediately with error handling
+  performCleanup().catch(error => {
+    console.error('Error during initial Redis cleanup:', error)
+  })
 
   // Schedule periodic cleanup
   cleanupInterval = setInterval(performCleanup, CLEANUP_CONFIG.CLEANUP_INTERVAL_MS)

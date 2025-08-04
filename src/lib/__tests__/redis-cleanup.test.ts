@@ -139,6 +139,7 @@ describe('Redis Cleanup', () => {
 
       const mockNamespace = {
         fetchSockets: vi.fn().mockResolvedValue([mockSocket]),
+        removeAllListeners: vi.fn(),
       }
 
       mockSocketServer._nsps.set('/room:test-room', mockNamespace)
@@ -151,6 +152,7 @@ describe('Redis Cleanup', () => {
       await new Promise(resolve => setTimeout(resolve, 50))
 
       expect(mockSocket.disconnect).toHaveBeenCalledWith(true)
+      expect(mockNamespace.removeAllListeners).toHaveBeenCalled()
       expect(mockSocketServer._nsps.has('/room:test-room')).toBe(false)
     })
 
