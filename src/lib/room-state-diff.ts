@@ -10,6 +10,11 @@ import type { Participant } from '@/types/participant'
 import type { RoomStateUpdateEvent } from '@/types/socket'
 
 /**
+ * Default presentation timer duration in milliseconds (10 minutes)
+ */
+const DEFAULT_PRESENTATION_DURATION_MS = 10 * 60 * 1000
+
+/**
  * Diff result for room state changes
  */
 export interface RoomStateDiff {
@@ -290,8 +295,8 @@ function calculateTimerStateDiff(previousRoom: Room, currentRoom: Room): TimerSt
     if (currentRoom.currentPresenterId) {
       changes.currentTimeChanged = 0
       changes.startTimeChanged = new Date().toISOString()
-      // Set end time based on typical presentation duration (10 minutes default)
-      changes.endTimeChanged = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+      // Set end time based on typical presentation duration
+      changes.endTimeChanged = new Date(Date.now() + DEFAULT_PRESENTATION_DURATION_MS).toISOString()
     }
   }
 
@@ -329,7 +334,7 @@ function calculateTimerStateDiff(previousRoom: Room, currentRoom: Room): TimerSt
       // New selection started, reset timer
       changes.currentTimeChanged = 0
       changes.startTimeChanged = latestSelection.selectedAt.toISOString()
-      changes.maxTimeChanged = 10 * 60 * 1000 // 10 minutes in milliseconds
+      changes.maxTimeChanged = DEFAULT_PRESENTATION_DURATION_MS
       hasChanges = true
     }
   }
@@ -360,7 +365,7 @@ export function diffToSocketEvent(room: Room): Omit<RoomStateUpdateEvent, 'roomI
 
   // Calculate current timer values
   let currentTime = 0
-  const maxTime = 10 * 60 * 1000 // 10 minutes default
+  const maxTime = DEFAULT_PRESENTATION_DURATION_MS
   let timerStartTime: string | undefined
   let timerEndTime: string | undefined
 
