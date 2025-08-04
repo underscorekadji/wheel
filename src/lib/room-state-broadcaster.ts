@@ -199,6 +199,16 @@ const CACHE_CONFIG = {
 } as const
 
 /**
+ * Performance monitoring configuration
+ */
+export const BROADCAST_PERFORMANCE_CONFIG = {
+  MAX_TOTAL_TIME_MS: 500, // Maximum total broadcast time
+  MAX_DIFF_TIME_MS: 100, // Maximum diff calculation time
+  MAX_BROADCAST_TIME_MS: 200, // Maximum actual broadcast time
+  WARN_CLIENT_COUNT: 50, // Warn if broadcasting to too many clients
+} as const
+
+/**
  * Retry configuration for broadcast operations
  */
 const RETRY_CONFIG = {
@@ -213,7 +223,7 @@ const RETRY_CONFIG = {
  */
 const DEBOUNCE_CONFIG = {
   DELAY_MS: 50, // Debounce delay in milliseconds
-  MAX_WAIT_MS: 500, // Maximum time to wait before forcing broadcast
+  MAX_WAIT_MS: BROADCAST_PERFORMANCE_CONFIG.MAX_TOTAL_TIME_MS, // Maximum time to wait before forcing broadcast
 } as const
 
 /**
@@ -445,10 +455,10 @@ async function _broadcastRoomStateUpdateInternal(
     )
 
     // Warn if broadcast took too long
-    if (totalTime > 500) {
+    if (totalTime > BROADCAST_PERFORMANCE_CONFIG.MAX_TOTAL_TIME_MS) {
       console.warn(
         `Room state broadcast for ${room.id} took ${totalTime}ms, ` +
-          'exceeding 500ms performance requirement'
+          `exceeding ${BROADCAST_PERFORMANCE_CONFIG.MAX_TOTAL_TIME_MS}ms performance requirement`
       )
     }
 
@@ -779,16 +789,6 @@ export function cleanupRoomStateCache(): void {
   cleanupExpiredCacheEntries()
   enforceCacheSizeLimit()
 }
-
-/**
- * Performance monitoring configuration
- */
-export const BROADCAST_PERFORMANCE_CONFIG = {
-  MAX_TOTAL_TIME_MS: 500, // Maximum total broadcast time
-  MAX_DIFF_TIME_MS: 100, // Maximum diff calculation time
-  MAX_BROADCAST_TIME_MS: 200, // Maximum actual broadcast time
-  WARN_CLIENT_COUNT: 50, // Warn if broadcasting to too many clients
-} as const
 
 /**
  * Validate broadcast performance against requirements
