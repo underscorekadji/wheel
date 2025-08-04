@@ -14,6 +14,14 @@ import {
  * Contains behavior for managing participant lifecycle and status transitions.
  */
 export class Participant {
+  /**
+   * Reset participant status to queued (for session reset)
+   */
+  reset() {
+    this._status = ParticipantStatus.queued()
+    this._lastSelectedAt = null
+    this._lastUpdatedAt = new Date()
+  }
   private _lastSelectedAt: Date | null
 
   constructor(

@@ -7,6 +7,7 @@ import {
   FinishPresentationOutput,
 } from '../use-cases/finish-presentation'
 import { RoomRepository } from '../../domain/room/repository/room-repository'
+import { Room } from '../../domain/room/entities/room'
 import { WheelSpinService } from '../../domain/room/services/wheel-spin-service'
 import { ParticipantManagementService } from '../../domain/room/services/participant-management-service'
 import { RoomId, ParticipantId } from '../../domain/shared/value-objects/id'
@@ -241,10 +242,7 @@ export class RoomApplicationService {
    * @param forceUpdate - Force broadcast even if no changes detected
    * @returns Promise<void>
    */
-  private async saveRoomWithBroadcast(
-    room: import('../../domain/room/entities/room').Room,
-    forceUpdate = false
-  ): Promise<void> {
+  private async saveRoomWithBroadcast(room: Room, forceUpdate = false): Promise<void> {
     const startTime = performance.now()
 
     try {

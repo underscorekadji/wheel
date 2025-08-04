@@ -28,6 +28,36 @@ export class SelectionHistoryEntry {
  * It contains participants and manages the spinning wheel functionality.
  */
 export class Room {
+  /**
+   * Reconstruct Room from plain object properties
+   */
+  static reconstruct(props: {
+    id: RoomId
+    name: RoomName
+    status: RoomStatus
+    participants: Participant[]
+    organizerId: ParticipantId
+    createdAt: Date
+    lastUpdatedAt: Date
+    expiresAt: Date
+    currentPresenterId: ParticipantId | null
+    wheelConfig: WheelConfig
+    selectionHistory: SelectionHistoryEntry[]
+  }): Room {
+    return new Room(
+      props.id,
+      props.name,
+      props.status,
+      props.participants,
+      props.organizerId,
+      props.createdAt,
+      props.lastUpdatedAt,
+      props.expiresAt,
+      props.currentPresenterId,
+      props.wheelConfig,
+      props.selectionHistory
+    )
+  }
   private static readonly TTL_HOURS = 8
 
   constructor(
@@ -213,8 +243,7 @@ export class Room {
     // Reset all participants to queued status
     this._participants.forEach(participant => {
       if (participant.status.isFinished()) {
-        participant.updateName(participant.name) // This will trigger the lastUpdatedAt update
-        // We need a proper reset method on participant
+        participant.reset() // Properly reset participant status to queued
       }
     })
 

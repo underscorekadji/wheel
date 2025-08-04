@@ -144,31 +144,21 @@ export class RedisRoomRepository implements RoomRepository {
       }
     )
 
-    // Create Room using constructor (bypassing factory method for reconstruction)
-    return new (Room as new (
-      id: RoomId,
-      name: RoomName,
-      status: RoomStatus,
-      participants: Participant[],
-      organizerId: ParticipantId,
-      createdAt: Date,
-      lastUpdatedAt: Date,
-      expiresAt: Date,
-      currentPresenterId: ParticipantId | null,
-      wheelConfig: WheelConfig,
-      selectionHistory: SelectionHistoryEntry[]
-    ) => Room)(
-      new RoomId(data.id as string),
-      new RoomName(data.name as string),
-      new RoomStatus(data.status as RoomStatusEnum),
+    // Create Room using static reconstruction method
+    return Room.reconstruct({
+      id: new RoomId(data.id as string),
+      name: new RoomName(data.name as string),
+      status: new RoomStatus(data.status as RoomStatusEnum),
       participants,
-      new ParticipantId(data.organizerId as string),
-      new Date(data.createdAt as string),
-      new Date(data.lastUpdatedAt as string),
-      new Date(data.expiresAt as string),
-      data.currentPresenterId ? new ParticipantId(data.currentPresenterId as string) : null,
+      organizerId: new ParticipantId(data.organizerId as string),
+      createdAt: new Date(data.createdAt as string),
+      lastUpdatedAt: new Date(data.lastUpdatedAt as string),
+      expiresAt: new Date(data.expiresAt as string),
+      currentPresenterId: data.currentPresenterId
+        ? new ParticipantId(data.currentPresenterId as string)
+        : null,
       wheelConfig,
-      selectionHistory
-    )
+      selectionHistory,
+    })
   }
 }

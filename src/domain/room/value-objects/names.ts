@@ -29,8 +29,8 @@ export class ParticipantName {
       throw new Error(`Participant name cannot exceed ${ParticipantName.MAX_LENGTH} characters`)
     }
 
-    // Check for invalid characters
-    if (!/^[a-zA-Z0-9\s\-_.]+$/.test(trimmed)) {
+    // Check for invalid characters (alphanumeric, spaces, hyphens only)
+    if (!/^[a-zA-Z0-9\s\-]+$/.test(trimmed)) {
       throw new Error('Participant name contains invalid characters')
     }
   }
