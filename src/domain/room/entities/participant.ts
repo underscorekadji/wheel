@@ -14,16 +14,6 @@ import {
  * Contains behavior for managing participant lifecycle and status transitions.
  */
 export class Participant {
-  /**
-   * Reset participant status to queued (for session reset)
-   */
-  reset() {
-    this._status = ParticipantStatus.queued()
-    this._lastSelectedAt = null
-    this._lastUpdatedAt = new Date()
-  }
-  private _lastSelectedAt: Date | null
-
   constructor(
     private readonly _id: ParticipantId,
     private _name: ParticipantName,
@@ -31,9 +21,19 @@ export class Participant {
     private readonly _role: ParticipantRole,
     private readonly _joinedAt: Date,
     private _lastUpdatedAt: Date,
-    lastSelectedAt: Date | null = null
-  ) {
-    this._lastSelectedAt = lastSelectedAt
+    private _lastSelectedAt: Date | null = null
+  ) {}
+
+  /**
+   * Resets the participant's status to queued, clears lastSelectedAt, and updates lastUpdatedAt.
+   *
+   * Purpose: Used to reset a participant's lifecycle state for a new session or round.
+   * When to call: Use when restarting the wheel or re-queuing participants for selection.
+   */
+  reset() {
+    this._status = ParticipantStatus.queued()
+    this._lastSelectedAt = null
+    this._lastUpdatedAt = new Date()
   }
 
   // Getters
