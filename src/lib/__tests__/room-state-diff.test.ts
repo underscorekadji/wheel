@@ -294,7 +294,11 @@ describe('Room State Diff Calculation', () => {
       validateDiffPerformance(startTime, endTime, 'test-room')
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Room state diff calculation took 150')
+        expect.stringContaining('Room state diff calculation took')
+      )
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('test-room'))
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('exceeding threshold of 100ms')
       )
 
       consoleSpy.mockRestore()

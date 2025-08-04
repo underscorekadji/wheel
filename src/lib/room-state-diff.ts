@@ -73,7 +73,7 @@ export function calculateRoomStateDiff(
 ): RoomStateDiff {
   const startTime = performance.now()
 
-  // If no previous room, everything is new
+  // If no previous room, everything is new (initial state)
   if (!previousRoom) {
     const diff: RoomStateDiff = {
       hasChanges: true,
@@ -81,14 +81,19 @@ export function calculateRoomStateDiff(
         type: 'added' as const,
         participant,
       })),
-      wheelStateChanges: {
-        isSpinningChanged: false, // Default wheel state
-        selectedParticipantChanged: currentRoom.currentPresenterId || undefined,
-      },
-      timerStateChanges: {
-        isActiveChanged: false, // Default timer state
-        participantIdChanged: currentRoom.currentPresenterId || undefined,
-      },
+      wheelStateChanges:
+        currentRoom.currentPresenterId !== null
+          ? {
+              selectedParticipantChanged: currentRoom.currentPresenterId,
+            }
+          : null,
+      timerStateChanges:
+        currentRoom.status === 'active' && currentRoom.currentPresenterId !== null
+          ? {
+              isActiveChanged: true,
+              participantIdChanged: currentRoom.currentPresenterId,
+            }
+          : null,
       sessionActiveChange: currentRoom.status === 'active',
       currentPresenterChange: currentRoom.currentPresenterId,
     }
