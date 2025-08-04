@@ -1,5 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { POST } from '../route'
+
+// Mock the Redis repository to avoid requiring Redis in tests
+vi.mock('@/infrastructure/repositories/redis-room-repository', () => {
+  return {
+    RedisRoomRepository: vi.fn().mockImplementation(() => ({
+      save: vi.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue(null),
+      delete: vi.fn().mockResolvedValue(undefined),
+    })),
+  }
+})
 
 describe('POST /api/room', () => {
   // UUID v4 regex pattern to verify format
