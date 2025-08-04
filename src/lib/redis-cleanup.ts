@@ -1,15 +1,11 @@
 /**
  * Redis Key Expiration Cleanup Job
  *
- * Implements automatic cleanup of expired Redis keys and associated memory caches
- * to prevent memory leaks and maintain application performance.
+ * Implements automatic cleanup of memory caches and Socket.IO namespaces
+ * for expired Redis rooms to prevent memory leaks.
  *
- * Features:
- * - Proactive cleanup of expired Redis keys
- * - Memory cache cleanup for expired rooms
- * - Socket namespace cleanup for expired rooms
- * - Configurable cleanup intervals
- * - Performance monitoring and metrics
+ * Note: Redis keys are automatically cleaned up by TTL - this only handles
+ * application-level cleanup (memory caches and Socket namespaces).
  */
 
 import { getRedisClient, ROOM_KEY_PREFIX } from './redis'
@@ -29,37 +25,14 @@ export const CLEANUP_CONFIG = {
   // Maximum number of keys to scan in one cleanup cycle
   MAX_SCAN_COUNT: 1000,
 
-  // Maximum time to spend on cleanup in one cycle
-  MAX_CLEANUP_TIME_MS: 30 * 1000, // 30 seconds
-
   // Pattern for scanning room keys
   SCAN_PATTERN: `${ROOM_KEY_PREFIX}*`,
 } as const
 
 /**
- * Cleanup metrics for monitoring
- */
-export interface CleanupMetrics {
-  startTime: Date
-  endTime: Date
-  durationMs: number
-  keysScanned: number
-  expiredKeysFound: number
-  expiredKeysDeleted: number
-  cacheEntriesCleared: number
-  namespacesCleared: number
-  errors: string[]
-}
-
-/**
  * Global cleanup interval reference
  */
 let cleanupInterval: NodeJS.Timeout | null = null
-
-/**
- * Flag to prevent multiple cleanup operations running simultaneously
- */
-let cleanupInProgress = false
 
 /**
  * Scan for expired or soon-to-expire Redis keys
@@ -93,16 +66,12 @@ async function scanForExpiredKeys(
         const ttl = await client.ttl(key)
 
         // TTL values:
-        // -2: key does not exist
+        // -2: key does not exist (expired and removed by Redis)
         // -1: key exists but has no associated expire
         // >0: key exists and will expire in TTL seconds
 
-        if (ttl === -2) {
-          // Key already expired/deleted
-          const roomId = key.replace(ROOM_KEY_PREFIX, '')
-          expiredRoomIds.push(roomId)
-        } else if (ttl >= 0 && ttl <= CLEANUP_CONFIG.EXPIRY_THRESHOLD_SECONDS) {
-          // Key will expire soon or has already expired
+        if (ttl === -2 || (ttl >= 0 && ttl <= CLEANUP_CONFIG.EXPIRY_THRESHOLD_SECONDS)) {
+          // Key is expired or will expire soon
           const roomId = key.replace(ROOM_KEY_PREFIX, '')
           expiredRoomIds.push(roomId)
         }
@@ -122,58 +91,20 @@ async function scanForExpiredKeys(
 }
 
 /**
- * Delete expired Redis keys
- *
- * @param client - Redis client instance
- * @param roomIds - Array of room IDs to delete
- * @returns Promise<number> Number of keys actually deleted
- */
-async function deleteExpiredKeys(
-  client: Awaited<ReturnType<typeof getRedisClient>>,
-  roomIds: string[]
-): Promise<number> {
-  if (roomIds.length === 0) {
-    return 0
-  }
-
-  // Build array of keys to delete
-  const keys = roomIds.map(roomId => `${ROOM_KEY_PREFIX}${roomId}`)
-
-  try {
-    // Use DEL command to delete multiple keys atomically
-    const deletedCount = await client.del(...keys)
-    return deletedCount
-  } catch (error) {
-    console.error('Error deleting expired keys:', error)
-    // Try deleting one by one as fallback
-    let deletedCount = 0
-    for (const key of keys) {
-      try {
-        const result = await client.del(key)
-        deletedCount += result
-      } catch (individualError) {
-        console.warn(`Failed to delete key ${key}:`, individualError)
-      }
-    }
-    return deletedCount
-  }
-}
-
-/**
  * Clean up memory caches for expired rooms
  *
- * @param roomIds - Array of room IDs to clean from cache
+ * @param roomIds - Array of room IDs to clean up caches for
  * @returns number Number of cache entries cleared
  */
-function cleanupMemoryCaches(roomIds: string[]): number {
+async function cleanupMemoryCaches(roomIds: string[]): Promise<number> {
   let clearedCount = 0
 
   for (const roomId of roomIds) {
     try {
-      // Clear room state cache
+      // Clear room state cache from broadcaster
       clearRoomStateCache(roomId)
 
-      // Clear debounce entries
+      // Clear debounce entries for the room
       clearRoomDebounce(roomId)
 
       clearedCount++
@@ -229,180 +160,95 @@ async function cleanupSocketNamespaces(roomIds: string[]): Promise<number> {
 }
 
 /**
- * Perform comprehensive cleanup of expired Redis keys and associated resources
+ * Perform cleanup of expired room data from memory caches and Socket namespaces
  *
- * @returns Promise<CleanupMetrics> Metrics about the cleanup operation
+ * Note: Redis keys are automatically cleaned up by TTL, this only handles
+ * application-level cleanup to prevent memory leaks.
+ *
+ * @returns Promise<void>
  */
-export async function performRedisCleanup(): Promise<CleanupMetrics> {
-  const startTime = new Date()
-  const metrics: CleanupMetrics = {
-    startTime,
-    endTime: startTime,
-    durationMs: 0,
-    keysScanned: 0,
-    expiredKeysFound: 0,
-    expiredKeysDeleted: 0,
-    cacheEntriesCleared: 0,
-    namespacesCleared: 0,
-    errors: [],
-  }
-
-  // Prevent multiple cleanup operations running simultaneously
-  if (cleanupInProgress) {
-    metrics.errors.push('Cleanup already in progress, skipping')
-    return metrics
-  }
-
-  cleanupInProgress = true
-
+async function performCleanup(): Promise<void> {
   try {
-    // Set timeout for cleanup operation
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(
-        () => reject(new Error('Cleanup operation timed out')),
-        CLEANUP_CONFIG.MAX_CLEANUP_TIME_MS
-      )
-    })
+    console.info('Starting Redis cleanup job...')
+    const startTime = Date.now()
 
-    const cleanupPromise = async () => {
-      // Get Redis client
-      const client = await getRedisClient()
+    const client = await getRedisClient()
 
-      // Scan for expired keys
-      console.info('Starting Redis cleanup: scanning for expired keys...')
-      const expiredRoomIds = await scanForExpiredKeys(client)
-      metrics.expiredKeysFound = expiredRoomIds.length
+    // Find expired or soon-to-expire rooms
+    const expiredRoomIds = await scanForExpiredKeys(client)
 
-      if (expiredRoomIds.length === 0) {
-        console.info('Redis cleanup: no expired keys found')
-        return
-      }
-
-      console.info(
-        `Redis cleanup: found ${expiredRoomIds.length} expired room(s): ${expiredRoomIds.slice(0, 5).join(', ')}${expiredRoomIds.length > 5 ? '...' : ''}`
-      )
-
-      // Delete expired Redis keys
-      metrics.expiredKeysDeleted = await deleteExpiredKeys(client, expiredRoomIds)
-
-      // Clean up memory caches
-      metrics.cacheEntriesCleared = cleanupMemoryCaches(expiredRoomIds)
-
-      // Clean up Socket.IO namespaces
-      metrics.namespacesCleared = await cleanupSocketNamespaces(expiredRoomIds)
-
-      console.info(
-        `Redis cleanup completed: deleted ${metrics.expiredKeysDeleted} keys, ` +
-          `cleared ${metrics.cacheEntriesCleared} cache entries, ` +
-          `cleaned ${metrics.namespacesCleared} namespaces`
-      )
+    if (expiredRoomIds.length === 0) {
+      console.info('No expired rooms found during cleanup')
+      return
     }
 
-    // Run cleanup with timeout
-    await Promise.race([cleanupPromise(), timeoutPromise])
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    metrics.errors.push(errorMessage)
-    console.error('Redis cleanup failed:', error)
-  } finally {
-    cleanupInProgress = false
-    metrics.endTime = new Date()
-    metrics.durationMs = metrics.endTime.getTime() - metrics.startTime.getTime()
-  }
+    console.info(`Found ${expiredRoomIds.length} expired rooms to clean up`)
 
-  return metrics
+    // Clean up memory caches
+    const cacheEntriesCleared = await cleanupMemoryCaches(expiredRoomIds)
+
+    // Clean up Socket.IO namespaces
+    const namespacesCleared = await cleanupSocketNamespaces(expiredRoomIds)
+
+    const durationMs = Date.now() - startTime
+
+    console.info(
+      `Cleanup completed in ${durationMs}ms: ` +
+        `${cacheEntriesCleared} cache entries cleared, ` +
+        `${namespacesCleared} namespaces cleared`
+    )
+  } catch (error) {
+    console.error('Error during Redis cleanup:', error)
+  }
 }
 
 /**
- * Start automatic Redis cleanup job
+ * Start the automatic Redis cleanup job
  *
- * Runs cleanup at configured intervals to prevent memory leaks and maintain performance.
+ * Runs cleanup every 2 hours to clean up memory caches and Socket namespaces
+ * for expired rooms. Redis keys are automatically cleaned by TTL.
  *
- * @returns boolean True if cleanup job was started, false if already running
+ * @returns void
  */
-export function startRedisCleanupJob(): boolean {
+export function startRedisCleanupJob(): void {
   if (cleanupInterval) {
     console.warn('Redis cleanup job is already running')
-    return false
+    return
   }
 
-  // Run initial cleanup
-  performRedisCleanup()
-    .then(metrics => {
-      console.info(
-        `Initial Redis cleanup completed in ${metrics.durationMs}ms: ` +
-          `${metrics.expiredKeysDeleted} keys deleted, ${metrics.errors.length} errors`
-      )
-    })
-    .catch(error => {
-      console.error('Initial Redis cleanup failed:', error)
-    })
+  console.info('Starting Redis cleanup job...')
 
-  // Start periodic cleanup
-  cleanupInterval = setInterval(async () => {
-    try {
-      const metrics = await performRedisCleanup()
+  // Run initial cleanup immediately
+  performCleanup()
 
-      // Log summary only if there was work to do or errors occurred
-      if (metrics.expiredKeysFound > 0 || metrics.errors.length > 0) {
-        console.info(
-          `Scheduled Redis cleanup completed in ${metrics.durationMs}ms: ` +
-            `${metrics.expiredKeysFound} expired found, ${metrics.expiredKeysDeleted} deleted, ` +
-            `${metrics.errors.length} errors`
-        )
-      }
-    } catch (error) {
-      console.error('Scheduled Redis cleanup failed:', error)
-    }
-  }, CLEANUP_CONFIG.CLEANUP_INTERVAL_MS)
+  // Schedule periodic cleanup
+  cleanupInterval = setInterval(performCleanup, CLEANUP_CONFIG.CLEANUP_INTERVAL_MS)
 
   console.info(
-    `Started Redis cleanup job (interval: ${CLEANUP_CONFIG.CLEANUP_INTERVAL_MS / (60 * 1000)} minutes)`
+    `Redis cleanup job started - will run every ${CLEANUP_CONFIG.CLEANUP_INTERVAL_MS / 1000 / 60} minutes`
   )
-  return true
 }
 
 /**
- * Stop automatic Redis cleanup job
+ * Stop the automatic Redis cleanup job
  *
- * @returns boolean True if cleanup job was stopped, false if not running
+ * @returns void
  */
-export function stopRedisCleanupJob(): boolean {
-  if (!cleanupInterval) {
-    return false
+export function stopRedisCleanupJob(): void {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval)
+    cleanupInterval = null
+    console.info('Redis cleanup job stopped')
+  } else {
+    console.warn('Redis cleanup job is not running')
   }
-
-  clearInterval(cleanupInterval)
-  cleanupInterval = null
-
-  console.info('Stopped Redis cleanup job')
-  return true
 }
 
 /**
- * Check if Redis cleanup job is running
+ * Check if the Redis cleanup job is currently running
  *
- * @returns boolean True if cleanup job is active
+ * @returns boolean True if cleanup job is running
  */
 export function isRedisCleanupJobRunning(): boolean {
   return cleanupInterval !== null
-}
-
-/**
- * Get current cleanup configuration
- *
- * @returns Readonly cleanup configuration
- */
-export function getCleanupConfig(): typeof CLEANUP_CONFIG {
-  return CLEANUP_CONFIG
-}
-
-/**
- * Manual cleanup trigger for testing or administrative purposes
- *
- * @returns Promise<CleanupMetrics> Cleanup operation metrics
- */
-export async function triggerManualCleanup(): Promise<CleanupMetrics> {
-  console.info('Manual Redis cleanup triggered')
-  return performRedisCleanup()
 }
