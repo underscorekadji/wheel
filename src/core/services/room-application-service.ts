@@ -279,10 +279,7 @@ export class RoomApplicationService {
    * @param preloadCache - Whether to preload broadcast cache
    * @returns Promise<Room | null>
    */
-  private async getRoomWithCachePreload(
-    roomId: string,
-    preloadCache = true
-  ): Promise<import('../../domain/room/entities/room').Room | null> {
+  private async getRoomWithCachePreload(roomId: string, preloadCache = true): Promise<Room | null> {
     const room = await this.roomRepository.findById(new RoomId(roomId))
 
     if (room && preloadCache) {
