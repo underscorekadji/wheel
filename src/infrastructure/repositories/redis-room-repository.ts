@@ -4,17 +4,19 @@ import { RoomId, ParticipantId } from '../../domain/shared/value-objects/id'
 import { RoomName } from '../../domain/room/value-objects/names'
 import {
   RoomStatus,
-  WheelConfig,
   RoomStatusEnum,
+  WheelConfig,
 } from '../../domain/room/value-objects/room-attributes'
 import {
   ParticipantStatus,
+  ParticipantStatusEnum,
   ParticipantRole,
+  ParticipantRoleEnum,
 } from '../../domain/room/value-objects/participant-attributes'
 import { ParticipantName } from '../../domain/room/value-objects/names'
 import { RoomRepository } from '../../domain/room/repository/room-repository'
-import { getRedisClient, ROOM_KEY_PREFIX, ROOM_TTL_SECONDS } from '../../lib/redis'
-import { safeValidateRoom } from '../../lib/validation'
+import { getRedisClient, ROOM_KEY_PREFIX, ROOM_TTL_SECONDS } from '../persistence/redis-client'
+import { safeValidateRoom } from '../validation/zod-schemas'
 
 /**
  * Redis implementation of Room Repository
@@ -111,8 +113,8 @@ export class RedisRoomRepository implements RoomRepository {
       return new Participant(
         new ParticipantId(p.id as string),
         new ParticipantName(p.name as string),
-        new ParticipantStatus(p.status as any),
-        new ParticipantRole(p.role as any),
+        new ParticipantStatus(p.status as ParticipantStatusEnum),
+        new ParticipantRole(p.role as ParticipantRoleEnum),
         new Date(p.joinedAt as string),
         new Date(p.lastUpdatedAt as string),
         p.lastSelectedAt ? new Date(p.lastSelectedAt as string) : null
@@ -158,7 +160,7 @@ export class RedisRoomRepository implements RoomRepository {
     ) => Room)(
       new RoomId(data.id as string),
       new RoomName(data.name as string),
-      new RoomStatus(data.status as any),
+      new RoomStatus(data.status as RoomStatusEnum),
       participants,
       new ParticipantId(data.organizerId as string),
       new Date(data.createdAt as string),

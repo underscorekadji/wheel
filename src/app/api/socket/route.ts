@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { Server as SocketIOServer, Socket } from 'socket.io'
-import { setSocketServer, isSocketServerInitialized } from '@/lib/socket-server'
-import { startRedisCleanupJob } from '@/lib/redis-cleanup'
+import {
+  setSocketServer,
+  isSocketServerInitialized,
+} from '@/infrastructure/communication/socket-server'
+import { startRedisCleanupJob } from '@/infrastructure/persistence/redis-cleanup'
 import type {
   RoomStateUpdateEvent,
   ParticipantUpdateEvent,

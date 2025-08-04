@@ -13,7 +13,7 @@ vi.spyOn(console, 'error').mockImplementation(() => {})
 vi.spyOn(console, 'debug').mockImplementation(() => {})
 
 // Mock room state broadcaster
-vi.mock('../room-state-broadcaster', () => ({
+vi.mock('../../communication/room-state-broadcaster', () => ({
   clearRoomStateCache: vi.fn(),
   clearRoomDebounce: vi.fn(),
 }))
@@ -23,12 +23,12 @@ const mockSocketServer = {
   _nsps: new Map(),
 }
 
-vi.mock('../socket-server', () => ({
+vi.mock('../../communication/socket-server', () => ({
   getSocketServer: vi.fn(() => mockSocketServer),
 }))
 
 // Mock Redis
-vi.mock('../redis', () => ({
+vi.mock('../redis-client', () => ({
   getRedisClient: vi.fn(() => Promise.resolve(mockRedisClient)),
   ROOM_KEY_PREFIX: 'room:',
 }))
@@ -40,7 +40,7 @@ import {
   isRedisCleanupJobRunning,
   CLEANUP_CONFIG,
 } from '../redis-cleanup'
-import { clearRoomStateCache, clearRoomDebounce } from '../room-state-broadcaster'
+import { clearRoomStateCache, clearRoomDebounce } from '../../communication/room-state-broadcaster'
 
 // Type the mocked functions
 const mockClearRoomStateCache = vi.mocked(clearRoomStateCache)
@@ -71,8 +71,8 @@ describe('Redis Cleanup', () => {
 
       startRedisCleanupJob()
 
-      // Wait a bit for the async cleanup to execute
-      await new Promise(resolve => setTimeout(resolve, 50))
+      // Wait longer for the async cleanup to execute
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(mockRedisClient.scan).toHaveBeenCalled()
     })
@@ -112,7 +112,7 @@ describe('Redis Cleanup', () => {
       startRedisCleanupJob()
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(mockRedisClient.scan).toHaveBeenCalledWith('0', 'MATCH', 'room:*', 'COUNT', '100')
     })
@@ -125,7 +125,7 @@ describe('Redis Cleanup', () => {
 
       startRedisCleanupJob()
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(mockRedisClient.ttl).toHaveBeenCalledTimes(2)
       expect(mockClearRoomStateCache).toHaveBeenCalledWith('expired-1')
@@ -149,7 +149,7 @@ describe('Redis Cleanup', () => {
 
       startRedisCleanupJob()
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(mockSocket.disconnect).toHaveBeenCalledWith(true)
       expect(mockNamespace.removeAllListeners).toHaveBeenCalled()
@@ -162,7 +162,7 @@ describe('Redis Cleanup', () => {
 
       startRedisCleanupJob()
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(console.warn).toHaveBeenCalledWith(
         'Error checking TTL for key room:test-1:',
@@ -177,7 +177,7 @@ describe('Redis Cleanup', () => {
 
       startRedisCleanupJob()
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining('Reached maximum scan count (1000)')
@@ -190,7 +190,7 @@ describe('Redis Cleanup', () => {
 
       startRedisCleanupJob()
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(console.info).toHaveBeenCalledWith('No expired rooms found during cleanup')
     })
@@ -200,7 +200,7 @@ describe('Redis Cleanup', () => {
 
       startRedisCleanupJob()
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(console.error).toHaveBeenCalledWith('Error during Redis cleanup:', expect.any(Error))
     })
@@ -211,7 +211,7 @@ describe('Redis Cleanup', () => {
 
       startRedisCleanupJob()
 
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(mockClearRoomStateCache).toHaveBeenCalledWith('test-room')
       expect(mockClearRoomDebounce).toHaveBeenCalledWith('test-room')

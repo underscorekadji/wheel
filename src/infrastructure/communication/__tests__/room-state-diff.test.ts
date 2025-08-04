@@ -9,8 +9,7 @@ import {
   validateDiffPerformance,
   DIFF_PERFORMANCE_THRESHOLD_MS,
 } from '../room-state-diff'
-import type { Room } from '@/types/room'
-import type { Participant } from '@/types/participant'
+import type { Room, Participant } from '@/domain/compatibility-types'
 
 describe('Room State Diff Calculation', () => {
   let baseRoom: Room

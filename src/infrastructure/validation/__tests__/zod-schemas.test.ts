@@ -3,20 +3,21 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { validateRoom, safeValidateRoom, isValidRoom } from '../validation'
-import type { Room } from '@/types/room'
+import { validateRoom, safeValidateRoom, isValidRoom } from '../zod-schemas'
+import type { Room } from '@/domain/compatibility-types'
+import { RoomStatusEnum, ParticipantStatusEnum, ParticipantRoleEnum } from '@/domain'
 
 describe('Validation Functions', () => {
   const validRoomData: Room = {
     id: '550e8400-e29b-41d4-a716-446655440000',
     name: 'Test Room',
-    status: 'waiting',
+    status: RoomStatusEnum.WAITING,
     participants: [
       {
         id: '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
         name: 'John Doe',
-        status: 'queued',
-        role: 'organizer',
+        status: ParticipantStatusEnum.QUEUED,
+        role: ParticipantRoleEnum.ORGANIZER,
         joinedAt: new Date('2024-01-01T10:00:00Z'),
         lastUpdatedAt: new Date('2024-01-01T10:00:00Z'),
         lastSelectedAt: null,

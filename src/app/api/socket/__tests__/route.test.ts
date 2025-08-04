@@ -13,13 +13,13 @@ vi.mock('socket.io', () => ({
   })),
 }))
 
-vi.mock('@/lib/socket-server', () => ({
+vi.mock('@/infrastructure/communication/socket-server', () => ({
   isSocketServerInitialized: vi.fn(),
   setSocketServer: vi.fn(),
   getSocketServer: vi.fn(),
 }))
 
-vi.mock('@/lib/http-server', () => ({
+vi.mock('@/infrastructure/web/http-server', () => ({
   isHttpServerInitialized: vi.fn(),
   getCurrentHttpServer: vi.fn(),
   cleanupHttpServer: vi.fn(),
@@ -52,7 +52,9 @@ describe('Socket.IO API Route', () => {
 
   describe('GET /api/socket', () => {
     it('should initialize Socket.IO server successfully', async () => {
-      const { isSocketServerInitialized, setSocketServer } = await import('@/lib/socket-server')
+      const { isSocketServerInitialized, setSocketServer } = await import(
+        '@/infrastructure/communication/socket-server'
+      )
 
       // Mock server not initialized
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
@@ -79,7 +81,9 @@ describe('Socket.IO API Route', () => {
     })
 
     it('should return success if Socket.IO server is already initialized', async () => {
-      const { isSocketServerInitialized, setSocketServer } = await import('@/lib/socket-server')
+      const { isSocketServerInitialized, setSocketServer } = await import(
+        '@/infrastructure/communication/socket-server'
+      )
 
       // Mock server already initialized
       vi.mocked(isSocketServerInitialized).mockReturnValue(true)
@@ -96,7 +100,9 @@ describe('Socket.IO API Route', () => {
     })
 
     it('should handle Socket.IO server initialization errors', async () => {
-      const { isSocketServerInitialized } = await import('@/lib/socket-server')
+      const { isSocketServerInitialized } = await import(
+        '@/infrastructure/communication/socket-server'
+      )
       const { Server } = await import('socket.io')
 
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
@@ -119,7 +125,9 @@ describe('Socket.IO API Route', () => {
     })
 
     it('should set up correct Socket.IO server configuration', async () => {
-      const { isSocketServerInitialized } = await import('@/lib/socket-server')
+      const { isSocketServerInitialized } = await import(
+        '@/infrastructure/communication/socket-server'
+      )
       const { Server } = await import('socket.io')
 
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
@@ -140,7 +148,9 @@ describe('Socket.IO API Route', () => {
     })
 
     it('should set up room namespace pattern', async () => {
-      const { isSocketServerInitialized } = await import('@/lib/socket-server')
+      const { isSocketServerInitialized } = await import(
+        '@/infrastructure/communication/socket-server'
+      )
       const { Server } = await import('socket.io')
 
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
@@ -158,7 +168,9 @@ describe('Socket.IO API Route', () => {
     })
 
     it('should handle production CORS configuration', async () => {
-      const { isSocketServerInitialized } = await import('@/lib/socket-server')
+      const { isSocketServerInitialized } = await import(
+        '@/infrastructure/communication/socket-server'
+      )
       const { Server } = await import('socket.io')
 
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)

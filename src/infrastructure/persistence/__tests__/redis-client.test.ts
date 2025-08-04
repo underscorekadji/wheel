@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import type { Room } from '@/types/room'
+import type { Room } from '@/domain/compatibility-types'
 import {
   setRoom,
   getRoom,
@@ -11,7 +11,7 @@ import {
   ROOM_KEY_PREFIX,
   getRedisClient,
   closeRedisConnection,
-} from '../redis'
+} from '../redis-client'
 
 // Mock ioredis
 vi.mock('ioredis', () => {

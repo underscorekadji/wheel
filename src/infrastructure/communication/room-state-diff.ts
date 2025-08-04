@@ -5,8 +5,7 @@
  * broadcasting only the changes to namespace clients within 500ms.
  */
 
-import type { Room } from '@/types/room'
-import type { Participant } from '@/types/participant'
+import type { Room, Participant } from '@/domain/compatibility-types'
 import type { RoomStateUpdateEvent } from '@/types/socket'
 
 /**

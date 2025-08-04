@@ -5,8 +5,7 @@
  * Ensures updates are broadcast within 500ms of state changes.
  */
 
-import type { Room, RoomStatus } from '@/types/room'
-import type { Participant } from '@/types/participant'
+import type { Room, RoomStatus, Participant } from '@/domain/compatibility-types'
 import type { RoomStateUpdateEvent } from '@/types/socket'
 import { getSocketServer } from './socket-server'
 import {

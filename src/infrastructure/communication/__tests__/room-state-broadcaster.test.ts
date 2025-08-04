@@ -14,8 +14,7 @@ import {
   validateBroadcastPerformance,
 } from '../room-state-broadcaster'
 import { setSocketServer } from '../socket-server'
-import type { Room } from '@/types/room'
-import type { Participant } from '@/types/participant'
+import type { Room, Participant } from '@/domain/compatibility-types'
 
 // Mock Socket.IO
 const mockEmit = vi.fn()

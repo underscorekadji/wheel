@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { RoomNamespace } from '../socket'
-import type { ParticipantStatus, Participant } from '../participant'
+import type { ParticipantStatus, Participant } from '@/domain/compatibility-types'
 import type {
   ParticipantAction,
   WheelAction,

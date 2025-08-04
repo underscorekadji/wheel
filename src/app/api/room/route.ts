@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { RoomApplicationService } from '@/application/services/room-application-service'
+import { RoomApplicationService } from '@/core/services/room-application-service'
 import { RedisRoomRepository } from '@/infrastructure/repositories/redis-room-repository'
 import { WheelSpinService } from '@/domain/room/services/wheel-spin-service'
 import { ParticipantManagementService } from '@/domain/room/services/participant-management-service'
@@ -31,7 +31,7 @@ function createRoomApplicationService(): RoomApplicationService {
  *   "roomId": "123e4567-e89b-12d3-a456-426614174000",
  *   "organizerId": "456e7890-e89b-12d3-a456-426614174001",
  *   "roomName": "Presentation Room",
- *   "status": "waiting"
+ *   "status": RoomStatusEnum.WAITING
  * }
  */
 export async function POST() {
