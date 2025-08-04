@@ -43,7 +43,7 @@ class HttpServerManager {
 
     if (!this.isListening) {
       this.httpServer.listen(socketPort, () => {
-        console.log(`Socket.IO HTTP server listening on port ${socketPort}`)
+        console.info(`Socket.IO HTTP server listening on port ${socketPort}`)
         this.isListening = true
       })
 

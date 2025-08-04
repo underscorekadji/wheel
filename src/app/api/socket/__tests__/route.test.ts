@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { GET } from '../route'
 import type { Server as SocketIOServer } from 'socket.io'
-import type { Server as HttpServer } from 'http'
 
 // Mock Socket.IO and socket-server utilities
 vi.mock('socket.io', () => ({
@@ -21,7 +20,6 @@ vi.mock('@/lib/socket-server', () => ({
 }))
 
 vi.mock('@/lib/http-server', () => ({
-  getOrCreateHttpServer: vi.fn(),
   isHttpServerInitialized: vi.fn(),
   getCurrentHttpServer: vi.fn(),
   cleanupHttpServer: vi.fn(),
@@ -55,17 +53,9 @@ describe('Socket.IO API Route', () => {
   describe('GET /api/socket', () => {
     it('should initialize Socket.IO server successfully', async () => {
       const { isSocketServerInitialized, setSocketServer } = await import('@/lib/socket-server')
-      const { getOrCreateHttpServer } = await import('@/lib/http-server')
 
       // Mock server not initialized
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
-
-      // Mock HTTP server creation
-      const mockHttpServer = {
-        listen: vi.fn(),
-        close: vi.fn(),
-      } as unknown as HttpServer
-      vi.mocked(getOrCreateHttpServer).mockReturnValue(mockHttpServer)
 
       const response = await GET()
       const data = await response.json()
@@ -90,17 +80,9 @@ describe('Socket.IO API Route', () => {
 
     it('should return success if Socket.IO server is already initialized', async () => {
       const { isSocketServerInitialized, setSocketServer } = await import('@/lib/socket-server')
-      const { getOrCreateHttpServer } = await import('@/lib/http-server')
 
       // Mock server already initialized
       vi.mocked(isSocketServerInitialized).mockReturnValue(true)
-
-      // Mock HTTP server (shouldn't be called but provide anyway)
-      const mockHttpServer = {
-        listen: vi.fn(),
-        close: vi.fn(),
-      } as unknown as HttpServer
-      vi.mocked(getOrCreateHttpServer).mockReturnValue(mockHttpServer)
 
       const response = await GET()
       const data = await response.json()
@@ -115,12 +97,12 @@ describe('Socket.IO API Route', () => {
 
     it('should handle Socket.IO server initialization errors', async () => {
       const { isSocketServerInitialized } = await import('@/lib/socket-server')
-      const { getOrCreateHttpServer } = await import('@/lib/http-server')
+      const { Server } = await import('socket.io')
 
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
 
-      // Mock error in HTTP server creation
-      vi.mocked(getOrCreateHttpServer).mockImplementationOnce(() => {
+      // Mock error in Socket.IO server creation
+      vi.mocked(Server).mockImplementationOnce(() => {
         throw new Error('Server initialization failed')
       })
 
@@ -138,49 +120,30 @@ describe('Socket.IO API Route', () => {
 
     it('should set up correct Socket.IO server configuration', async () => {
       const { isSocketServerInitialized } = await import('@/lib/socket-server')
-      const { getOrCreateHttpServer } = await import('@/lib/http-server')
       const { Server } = await import('socket.io')
 
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
 
-      // Mock HTTP server
-      const mockHttpServer = {
-        listen: vi.fn(),
-        on: vi.fn(),
-        close: vi.fn(),
-      } as unknown as HttpServer
-      vi.mocked(getOrCreateHttpServer).mockReturnValue(mockHttpServer)
-
       await GET()
 
       expect(Server).toHaveBeenCalledWith(
-        expect.any(Object),
         expect.objectContaining({
           cors: expect.objectContaining({
             origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
             methods: ['GET', 'POST'],
             credentials: true,
           }),
-          transports: ['websocket', 'polling'],
-          allowEIO3: true,
+          transports: ['polling', 'websocket'],
+          path: '/socket.io/',
         })
       )
     })
 
     it('should set up room namespace pattern', async () => {
       const { isSocketServerInitialized } = await import('@/lib/socket-server')
-      const { getOrCreateHttpServer } = await import('@/lib/http-server')
       const { Server } = await import('socket.io')
 
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
-
-      // Mock HTTP server
-      const mockHttpServer = {
-        listen: vi.fn(),
-        on: vi.fn(),
-        close: vi.fn(),
-      } as unknown as HttpServer
-      vi.mocked(getOrCreateHttpServer).mockReturnValue(mockHttpServer)
 
       const mockOf = vi.fn().mockReturnValue({ on: vi.fn() })
       const mockServer = { of: mockOf } as Partial<SocketIOServer>
@@ -196,18 +159,9 @@ describe('Socket.IO API Route', () => {
 
     it('should handle production CORS configuration', async () => {
       const { isSocketServerInitialized } = await import('@/lib/socket-server')
-      const { getOrCreateHttpServer } = await import('@/lib/http-server')
       const { Server } = await import('socket.io')
 
       vi.mocked(isSocketServerInitialized).mockReturnValue(false)
-
-      // Mock HTTP server
-      const mockHttpServer = {
-        listen: vi.fn(),
-        on: vi.fn(),
-        close: vi.fn(),
-      } as unknown as HttpServer
-      vi.mocked(getOrCreateHttpServer).mockReturnValue(mockHttpServer)
 
       // Mock production environment
       vi.stubEnv('NODE_ENV', 'production')
@@ -217,7 +171,6 @@ describe('Socket.IO API Route', () => {
         await GET()
 
         expect(Server).toHaveBeenCalledWith(
-          expect.any(Object),
           expect.objectContaining({
             cors: expect.objectContaining({
               origin: ['https://example.com'],

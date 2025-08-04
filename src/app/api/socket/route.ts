@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { Server as SocketIOServer, Socket } from 'socket.io'
 import { setSocketServer, isSocketServerInitialized } from '@/lib/socket-server'
-import { getOrCreateHttpServer } from '@/lib/http-server'
 import type {
   RoomStateUpdateEvent,
   ParticipantUpdateEvent,
@@ -67,11 +66,8 @@ export async function GET() {
  * @returns Configured Socket.IO server instance
  */
 function initializeSocketServer(): SocketIOServer {
-  // Get or create HTTP server for Socket.IO
-  const httpServer = getOrCreateHttpServer()
-
-  // Create Socket.IO server with proper configuration
-  const socketServer = new SocketIOServer(httpServer, {
+  // Create Socket.IO server with simplified configuration
+  const socketServer = new SocketIOServer({
     cors: {
       origin:
         process.env.NODE_ENV === 'production'
@@ -80,14 +76,14 @@ function initializeSocketServer(): SocketIOServer {
       methods: ['GET', 'POST'],
       credentials: true,
     },
-    transports: ['websocket', 'polling'],
-    allowEIO3: true,
+    transports: ['polling', 'websocket'],
+    path: '/socket.io/',
   })
 
   // Set up room-based namespace pattern: room:{id}
   setupRoomNamespaces(socketServer)
 
-  console.log('Socket.IO server initialized successfully with room namespaces')
+  console.info('Socket.IO server initialized successfully with room namespaces')
   return socketServer
 }
 
@@ -104,7 +100,7 @@ function setupRoomNamespaces(io: SocketIOServer) {
       const namespace = socket.nsp.name
       const roomId = namespace.replace('/room:', '')
 
-      console.log(`Client connected to room namespace: ${namespace} (${socket.id})`)
+      console.info(`Client connected to room: ${roomId}`)
 
       // Join the room automatically
       socket.join(roomId)
@@ -114,8 +110,6 @@ function setupRoomNamespaces(io: SocketIOServer) {
 
       // Handle disconnection
       socket.on('disconnect', reason => {
-        console.log(`Client disconnected from room ${roomId} (${socket.id}): ${reason}`)
-
         // Notify other clients in the room about disconnection
         socket.to(roomId).emit('user_disconnected', {
           socketId: socket.id,
@@ -166,8 +160,6 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
   // Handle room state updates (participants, wheel state, timer, etc.)
   socket.on('room_state_update', (data: Omit<RoomStateUpdateEvent, 'roomId' | 'timestamp'>) => {
     try {
-      console.log(`Room state update in ${roomId}:`, data)
-
       // Broadcast state update to all clients in the room except sender
       socket.to(roomId).emit('room_state_update', {
         ...data,
@@ -187,8 +179,6 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
   // Handle participant updates (add, remove, enable/disable)
   socket.on('participant_update', (data: Omit<ParticipantUpdateEvent, 'roomId' | 'timestamp'>) => {
     try {
-      console.log(`Participant update in ${roomId}:`, data)
-
       // Broadcast to all clients in the room
       socket.to(roomId).emit('participant_update', {
         ...data,
@@ -208,8 +198,6 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
   // Handle wheel spin events
   socket.on('wheel_spin', (data: Omit<WheelSpinEvent, 'roomId' | 'timestamp'>) => {
     try {
-      console.log(`Wheel spin in ${roomId}:`, data)
-
       // Broadcast to all clients in the room
       socket.to(roomId).emit('wheel_spin', {
         ...data,
@@ -229,8 +217,6 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
   // Handle timer events
   socket.on('timer_update', (data: Omit<TimerUpdateEvent, 'roomId' | 'timestamp'>) => {
     try {
-      console.log(`Timer update in ${roomId}:`, data)
-
       // Broadcast to all clients in the room
       socket.to(roomId).emit('timer_update', {
         ...data,
@@ -250,8 +236,6 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
   // Handle chat/messaging (optional for organizer-guest communication)
   socket.on('room_message', (data: Omit<RoomMessageEvent, 'roomId' | 'timestamp'>) => {
     try {
-      console.log(`Room message in ${roomId}:`, data)
-
       // Broadcast to all clients in the room
       socket.to(roomId).emit('room_message', {
         ...data,
@@ -263,6 +247,25 @@ function setupRoomEventHandlers(socket: Socket, roomId: string) {
       socket.emit('error', {
         event: 'room_message',
         error: 'Failed to process room message',
+        roomId,
+      })
+    }
+  })
+
+  // Handle text updates for live testing
+  socket.on('text_update', (data: { text: string; senderId: string }) => {
+    try {
+      // Broadcast to all clients in the room except sender
+      socket.to(roomId).emit('text_update', {
+        ...data,
+        roomId,
+        timestamp: new Date().toISOString(),
+      })
+    } catch (error) {
+      console.error(`Error handling text update in ${roomId}:`, error)
+      socket.emit('error', {
+        event: 'text_update',
+        error: 'Failed to process text update',
         roomId,
       })
     }

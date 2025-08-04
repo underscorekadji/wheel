@@ -64,7 +64,7 @@ export class SocketManager {
       // Wait for connection
       await this.waitForConnection()
 
-      console.log(`Connected to room namespace: ${namespace}`)
+      console.info(`Connected to room: ${config.roomId}`)
     } catch (error) {
       this.status = 'error'
       console.error('Failed to connect to socket:', error)
@@ -82,7 +82,6 @@ export class SocketManager {
     }
     this.status = 'disconnected'
     this.config = null
-    console.log('Socket disconnected')
   }
 
   /**
@@ -134,13 +133,11 @@ export class SocketManager {
     if (!this.socket) return
 
     this.socket.on('connect', () => {
-      console.log('Socket connected:', this.socket?.id)
       this.status = 'connected'
       this.reconnectAttempts = 0
     })
 
-    this.socket.on('disconnect', reason => {
-      console.log('Socket disconnected:', reason)
+    this.socket.on('disconnect', () => {
       this.status = 'disconnected'
     })
 
@@ -151,7 +148,7 @@ export class SocketManager {
     })
 
     this.socket.on('reconnect', attemptNumber => {
-      console.log(`Socket reconnected after ${attemptNumber} attempts`)
+      console.info(`Socket reconnected after ${attemptNumber} attempts`)
       this.status = 'connected'
       this.reconnectAttempts = 0
     })
@@ -182,9 +179,6 @@ export class SocketManager {
 
     this.reconnectTimeoutId = setTimeout(() => {
       if (this.config && this.status !== 'connected') {
-        console.log(
-          `Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}`
-        )
         this.connect(this.config)
       }
     }, this.reconnectDelay * this.reconnectAttempts)
@@ -322,7 +316,7 @@ export class SocketManager {
     }
 
     // Listen for typed events using Socket.IO's generic event map
-    this.socket.on(event as string, callback as (...args: any[]) => void)
+    this.socket.on(event as string, callback as (...args: unknown[]) => void)
   }
 
   /**
