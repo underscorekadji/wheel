@@ -206,41 +206,135 @@ function participantsEqual(a: Participant, b: Participant): boolean {
 }
 
 /**
- * Calculate wheel state differences (simplified for now)
+ * Calculate wheel state differences
  *
  * @param previousRoom - Previous room state
  * @param currentRoom - Current room state
  * @returns Wheel state changes or null if no changes
  */
 function calculateWheelStateDiff(previousRoom: Room, currentRoom: Room): WheelStateDiff | null {
-  // For now, just check if current presenter changed
-  // In a full implementation, this would check actual wheel state
+  const changes: WheelStateDiff = {}
+  let hasChanges = false
+
+  // Check if current presenter (selected participant) changed
   if (previousRoom.currentPresenterId !== currentRoom.currentPresenterId) {
-    return {
-      selectedParticipantChanged: currentRoom.currentPresenterId || undefined,
+    changes.selectedParticipantChanged = currentRoom.currentPresenterId || undefined
+    hasChanges = true
+  }
+
+  // Check if wheel is spinning (inferred from room status changes)
+  const previousSpinning =
+    previousRoom.status === 'active' && previousRoom.currentPresenterId === null
+  const currentSpinning = currentRoom.status === 'active' && currentRoom.currentPresenterId === null
+
+  if (previousSpinning !== currentSpinning) {
+    changes.isSpinningChanged = currentSpinning
+    hasChanges = true
+  }
+
+  // Check for new selection history entries (indicates a spin completed)
+  if (currentRoom.selectionHistory.length > previousRoom.selectionHistory.length) {
+    const latestSelection = currentRoom.selectionHistory[currentRoom.selectionHistory.length - 1]
+    if (latestSelection) {
+      changes.spinDurationChanged = latestSelection.spinDuration
+      changes.spinStartTimeChanged = new Date(
+        latestSelection.selectedAt.getTime() - latestSelection.spinDuration
+      ).toISOString()
+      hasChanges = true
     }
   }
 
-  return null
+  // Check if wheel configuration changed
+  const wheelConfigChanged =
+    previousRoom.wheelConfig.minSpinDuration !== currentRoom.wheelConfig.minSpinDuration ||
+    previousRoom.wheelConfig.maxSpinDuration !== currentRoom.wheelConfig.maxSpinDuration ||
+    previousRoom.wheelConfig.excludeFinished !== currentRoom.wheelConfig.excludeFinished ||
+    previousRoom.wheelConfig.allowRepeatSelections !== currentRoom.wheelConfig.allowRepeatSelections
+
+  if (wheelConfigChanged) {
+    // Wheel config changes affect wheel behavior but don't directly change wheel state
+    hasChanges = true
+  }
+
+  return hasChanges ? changes : null
 }
 
 /**
- * Calculate timer state differences (simplified for now)
+ * Calculate timer state differences
  *
  * @param previousRoom - Previous room state
  * @param currentRoom - Current room state
  * @returns Timer state changes or null if no changes
  */
 function calculateTimerStateDiff(previousRoom: Room, currentRoom: Room): TimerStateDiff | null {
-  // For now, just check if current presenter changed which affects timer
-  // In a full implementation, this would check actual timer state
+  const changes: TimerStateDiff = {}
+  let hasChanges = false
+
+  // Check if timer should be active (when room is active and someone is presenting)
+  const previousTimerActive =
+    previousRoom.status === 'active' && previousRoom.currentPresenterId !== null
+  const currentTimerActive =
+    currentRoom.status === 'active' && currentRoom.currentPresenterId !== null
+
+  if (previousTimerActive !== currentTimerActive) {
+    changes.isActiveChanged = currentTimerActive
+    hasChanges = true
+  }
+
+  // Check if the participant being timed changed
   if (previousRoom.currentPresenterId !== currentRoom.currentPresenterId) {
-    return {
-      participantIdChanged: currentRoom.currentPresenterId || undefined,
+    changes.participantIdChanged = currentRoom.currentPresenterId || undefined
+    hasChanges = true
+
+    // When presenter changes, timer starts fresh
+    if (currentRoom.currentPresenterId) {
+      changes.currentTimeChanged = 0
+      changes.startTimeChanged = new Date().toISOString()
+      // Set end time based on typical presentation duration (10 minutes default)
+      changes.endTimeChanged = new Date(Date.now() + 10 * 60 * 1000).toISOString()
     }
   }
 
-  return null
+  // Check if room status affects timer behavior
+  if (previousRoom.status !== currentRoom.status) {
+    switch (currentRoom.status) {
+      case 'paused':
+        // Timer should pause
+        if (currentRoom.currentPresenterId) {
+          changes.isActiveChanged = false
+          hasChanges = true
+        }
+        break
+      case 'active':
+        // Timer should resume/start
+        if (currentRoom.currentPresenterId) {
+          changes.isActiveChanged = true
+          hasChanges = true
+        }
+        break
+      case 'completed':
+      case 'expired':
+        // Timer should stop
+        changes.isActiveChanged = false
+        changes.currentTimeChanged = 0
+        hasChanges = true
+        break
+    }
+  }
+
+  // Check for selection history changes that affect timing
+  if (currentRoom.selectionHistory.length > previousRoom.selectionHistory.length) {
+    const latestSelection = currentRoom.selectionHistory[currentRoom.selectionHistory.length - 1]
+    if (latestSelection && latestSelection.participantId === currentRoom.currentPresenterId) {
+      // New selection started, reset timer
+      changes.currentTimeChanged = 0
+      changes.startTimeChanged = latestSelection.selectedAt.toISOString()
+      changes.maxTimeChanged = 10 * 60 * 1000 // 10 minutes in milliseconds
+      hasChanges = true
+    }
+  }
+
+  return hasChanges ? changes : null
 }
 
 /**
@@ -249,22 +343,59 @@ function calculateTimerStateDiff(previousRoom: Room, currentRoom: Room): TimerSt
  * Transforms the diff result into the format expected by Socket.IO clients.
  *
  * @param room - Current room state
- * @param diff - Calculated room state diff
  * @returns RoomStateUpdateEvent data for broadcasting
  */
 export function diffToSocketEvent(room: Room): Omit<RoomStateUpdateEvent, 'roomId' | 'timestamp'> {
+  // Determine if wheel is currently spinning
+  const isWheelSpinning = room.status === 'active' && room.currentPresenterId === null
+
+  // Determine if timer is active
+  const isTimerActive = room.status === 'active' && room.currentPresenterId !== null
+
+  // Get the latest selection for timing information
+  const latestSelection =
+    room.selectionHistory.length > 0
+      ? room.selectionHistory[room.selectionHistory.length - 1]
+      : null
+
+  // Calculate current timer values
+  let currentTime = 0
+  const maxTime = 10 * 60 * 1000 // 10 minutes default
+  let timerStartTime: string | undefined
+  let timerEndTime: string | undefined
+
+  if (
+    isTimerActive &&
+    latestSelection &&
+    latestSelection.participantId === room.currentPresenterId
+  ) {
+    const selectionTime = latestSelection.selectedAt.getTime()
+    const now = Date.now()
+    currentTime = Math.max(0, now - selectionTime)
+    timerStartTime = latestSelection.selectedAt.toISOString()
+    timerEndTime = new Date(selectionTime + maxTime).toISOString()
+  }
+
   return {
     participants: room.participants,
     currentPresenter: room.currentPresenterId || undefined,
     wheelState: {
-      isSpinning: false, // Default for now
+      isSpinning: isWheelSpinning,
       selectedParticipant: room.currentPresenterId || undefined,
+      spinDuration: latestSelection?.spinDuration,
+      spinStartTime: latestSelection
+        ? new Date(
+            latestSelection.selectedAt.getTime() - latestSelection.spinDuration
+          ).toISOString()
+        : undefined,
     },
     timerState: {
-      isActive: room.status === 'active',
-      currentTime: 0, // Default for now
-      maxTime: 600, // Default 10 minutes
+      isActive: isTimerActive,
+      currentTime,
+      maxTime,
       participantId: room.currentPresenterId || undefined,
+      startTime: timerStartTime,
+      endTime: timerEndTime,
     },
     sessionActive: room.status === 'active',
   }

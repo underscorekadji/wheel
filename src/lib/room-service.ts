@@ -30,7 +30,8 @@ export class RoomService {
   async setRoomWithBroadcast(
     roomId: string,
     roomData: Room,
-    forceUpdate = false
+    forceUpdate = false,
+    immediateUpdate = false
   ): Promise<boolean> {
     const startTime = performance.now()
 
@@ -44,7 +45,7 @@ export class RoomService {
 
       // Broadcast the changes to connected clients
       try {
-        const metrics = await broadcastRoomStateUpdate(roomData, forceUpdate)
+        const metrics = await broadcastRoomStateUpdate(roomData, forceUpdate, immediateUpdate)
 
         const totalTime = performance.now() - startTime
         console.info(
