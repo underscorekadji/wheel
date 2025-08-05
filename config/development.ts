@@ -31,6 +31,29 @@ export const developmentConfig: AppConfiguration = {
     path: '/socket.io/',
     corsCredentials: true,
   },
+  socketClient: {
+    maxReconnectAttempts: 5,
+    reconnectDelay: 1000,
+    connectionTimeout: 10000,
+  },
+  wheel: {
+    minSpinDuration: 1000,
+    maxSpinDuration: 15000,
+    defaultMinSpin: 2000,
+    defaultMaxSpin: 5000,
+  },
+  cache: {
+    maxSize: 1000,
+    ttlMs: 8 * 60 * 60 * 1000, // 8 hours
+    cleanupIntervalMs: 30 * 60 * 1000, // 30 minutes
+    retry: {
+      maxAttempts: 3,
+      baseDelayMs: 100,
+      maxDelayMs: 1000,
+    },
+    debounceDelayMs: 50,
+    defaultPresentationDurationMs: 10 * 60 * 1000, // 10 minutes
+  },
   security: {
     httpsEnabled: false,
     jwtSecret: undefined, // Not needed for MVP

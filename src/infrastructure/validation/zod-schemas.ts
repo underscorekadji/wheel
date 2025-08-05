@@ -8,6 +8,7 @@
 import { z } from 'zod'
 import type { Room } from '@/domain/compatibility-types'
 import { RoomStatusEnum, ParticipantStatusEnum, ParticipantRoleEnum } from '@/domain'
+import { configurationService } from '@/core/services/configuration'
 
 /**
  * Schema for RoomStatus enum validation
@@ -31,19 +32,32 @@ const ParticipantSchema = z.object({
 })
 
 /**
- * Schema for WheelConfig validation
+ * Schema for WheelConfig validation - uses centralized configuration limits
  */
-const WheelConfigSchema = z
-  .object({
-    minSpinDuration: z.number().int().min(1000).max(10000),
-    maxSpinDuration: z.number().int().min(2000).max(15000),
-    excludeFinished: z.boolean(),
-    allowRepeatSelections: z.boolean(),
-  })
-  .refine(data => data.minSpinDuration <= data.maxSpinDuration, {
-    message: 'minSpinDuration must be less than or equal to maxSpinDuration',
-    path: ['minSpinDuration'],
-  })
+const createWheelConfigSchema = () => {
+  const wheelConfig = configurationService.getWheelConfig()
+  return z
+    .object({
+      minSpinDuration: z
+        .number()
+        .int()
+        .min(wheelConfig.minSpinDuration)
+        .max(wheelConfig.maxSpinDuration),
+      maxSpinDuration: z
+        .number()
+        .int()
+        .min(wheelConfig.minSpinDuration)
+        .max(wheelConfig.maxSpinDuration),
+      excludeFinished: z.boolean(),
+      allowRepeatSelections: z.boolean(),
+    })
+    .refine(data => data.minSpinDuration <= data.maxSpinDuration, {
+      message: 'minSpinDuration must be less than or equal to maxSpinDuration',
+      path: ['minSpinDuration'],
+    })
+}
+
+const WheelConfigSchema = createWheelConfigSchema()
 
 /**
  * Schema for SelectionHistoryEntry validation

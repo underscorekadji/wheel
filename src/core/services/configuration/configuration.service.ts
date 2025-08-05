@@ -13,6 +13,9 @@ import type {
   AppConfig,
   RedisConfig,
   SocketConfig,
+  SocketClientConfig,
+  WheelConfig,
+  CacheConfig,
   SecurityConfig,
   PerformanceConfig,
   ConfigurationChangeEvent,
@@ -81,10 +84,31 @@ export class ConfigurationService implements IConfigurationService {
   }
 
   /**
-   * Get Socket configuration
+   * Get Socket server configuration
    */
   getSocketConfig(): SocketConfig {
     return { ...this.config.socket }
+  }
+
+  /**
+   * Get Socket client configuration
+   */
+  getSocketClientConfig(): SocketClientConfig {
+    return { ...this.config.socketClient }
+  }
+
+  /**
+   * Get Wheel configuration
+   */
+  getWheelConfig(): WheelConfig {
+    return { ...this.config.wheel }
+  }
+
+  /**
+   * Get Cache configuration
+   */
+  getCacheConfig(): CacheConfig {
+    return { ...this.config.cache }
   }
 
   /**
@@ -187,11 +211,23 @@ export class ConfigurationService implements IConfigurationService {
       properties: {
         app: { type: 'object', description: 'Application configuration' },
         redis: { type: 'object', description: 'Redis configuration' },
-        socket: { type: 'object', description: 'Socket.IO configuration' },
+        socket: { type: 'object', description: 'Socket.IO server configuration' },
+        socketClient: { type: 'object', description: 'Socket.IO client configuration' },
+        wheel: { type: 'object', description: 'Wheel behavior configuration' },
+        cache: { type: 'object', description: 'Cache configuration' },
         security: { type: 'object', description: 'Security configuration' },
         performance: { type: 'object', description: 'Performance configuration' },
       },
-      required: ['app', 'redis', 'socket', 'security', 'performance'],
+      required: [
+        'app',
+        'redis',
+        'socket',
+        'socketClient',
+        'wheel',
+        'cache',
+        'security',
+        'performance',
+      ],
     }
   }
 

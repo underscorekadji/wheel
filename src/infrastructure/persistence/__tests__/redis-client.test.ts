@@ -43,8 +43,8 @@ const mockRoom: Room = {
   expiresAt: new Date('2024-01-01T18:00:00Z'),
   currentPresenterId: null,
   wheelConfig: {
-    minSpinDuration: 2000,
-    maxSpinDuration: 5000,
+    minSpinDuration: 800, // Within test environment limits
+    maxSpinDuration: 1200, // Within test environment limits
     excludeFinished: true,
     allowRepeatSelections: false,
   },

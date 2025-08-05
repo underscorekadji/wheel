@@ -31,6 +31,29 @@ export const testConfig: AppConfiguration = {
     path: '/socket.io/',
     corsCredentials: true,
   },
+  socketClient: {
+    maxReconnectAttempts: 2, // Lower for faster test failure
+    reconnectDelay: 500, // Shorter delay for tests
+    connectionTimeout: 5000, // Shorter timeout for tests
+  },
+  wheel: {
+    minSpinDuration: 500, // Shorter for tests
+    maxSpinDuration: 2000, // Shorter for tests
+    defaultMinSpin: 800,
+    defaultMaxSpin: 1200,
+  },
+  cache: {
+    maxSize: 100, // Smaller cache for tests
+    ttlMs: 60 * 1000, // 1 minute for tests
+    cleanupIntervalMs: 5 * 1000, // 5 seconds for tests
+    retry: {
+      maxAttempts: 2,
+      baseDelayMs: 50,
+      maxDelayMs: 200,
+    },
+    debounceDelayMs: 10, // Very short for tests
+    defaultPresentationDurationMs: 30 * 1000, // 30 seconds for tests
+  },
   security: {
     httpsEnabled: false,
     jwtSecret: undefined,

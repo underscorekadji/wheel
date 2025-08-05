@@ -7,6 +7,7 @@
 
 import type { Room, RoomStatus, Participant } from '@/domain/compatibility-types'
 import type { RoomStateUpdateEvent } from '@/types/socket'
+import { configurationService } from '@/core/services/configuration'
 import { getSocketServer } from './socket-server'
 import {
   calculateRoomStateDiff,
@@ -189,13 +190,9 @@ interface CacheEntry {
 const roomStateCache = new Map<string, CacheEntry>()
 
 /**
- * Cache configuration
+ * Cache configuration - sourced from centralized configuration service
  */
-const CACHE_CONFIG = {
-  MAX_SIZE: 1000, // Maximum number of cached rooms
-  TTL_MS: 8 * 60 * 60 * 1000, // 8 hours (match Redis TTL)
-  CLEANUP_INTERVAL_MS: 30 * 60 * 1000, // 30 minutes cleanup interval
-} as const
+const getCacheConfig = () => configurationService.getCacheConfig()
 
 /**
  * Performance monitoring configuration
@@ -208,22 +205,20 @@ export const BROADCAST_PERFORMANCE_CONFIG = {
 } as const
 
 /**
- * Retry configuration for broadcast operations
+ * Retry configuration for broadcast operations - sourced from centralized configuration service
  */
-const RETRY_CONFIG = {
-  MAX_ATTEMPTS: 3,
-  BASE_DELAY_MS: 100,
-  MAX_DELAY_MS: 1000,
+const getRetryConfig = () => ({
+  ...configurationService.getCacheConfig().retry,
   EXPONENTIAL_BACKOFF: true,
-} as const
+})
 
 /**
- * Debounce configuration for rapid updates
+ * Debounce configuration for rapid updates - sourced from centralized configuration service
  */
-const DEBOUNCE_CONFIG = {
-  DELAY_MS: 50, // Debounce delay in milliseconds
+const getDebounceConfig = () => ({
+  DELAY_MS: configurationService.getCacheConfig().debounceDelayMs,
   MAX_WAIT_MS: BROADCAST_PERFORMANCE_CONFIG.MAX_TOTAL_TIME_MS, // Maximum time to wait before forcing broadcast
-} as const
+})
 
 /**
  * Cleanup interval for expired cache entries
@@ -256,17 +251,18 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, context: string, attemp
   try {
     return await fn()
   } catch (error) {
-    if (attempt >= RETRY_CONFIG.MAX_ATTEMPTS) {
+    const retryConfig = getRetryConfig()
+    if (attempt >= retryConfig.maxAttempts) {
       console.error(`${context} failed after ${attempt} attempts:`, error)
       throw error
     }
 
-    const delay = RETRY_CONFIG.EXPONENTIAL_BACKOFF
-      ? Math.min(RETRY_CONFIG.BASE_DELAY_MS * Math.pow(2, attempt - 1), RETRY_CONFIG.MAX_DELAY_MS)
-      : RETRY_CONFIG.BASE_DELAY_MS
+    const delay = retryConfig.EXPONENTIAL_BACKOFF
+      ? Math.min(retryConfig.baseDelayMs * Math.pow(2, attempt - 1), retryConfig.maxDelayMs)
+      : retryConfig.baseDelayMs
 
     console.warn(
-      `${context} failed (attempt ${attempt}/${RETRY_CONFIG.MAX_ATTEMPTS}), retrying in ${delay}ms:`,
+      `${context} failed (attempt ${attempt}/${retryConfig.maxAttempts}), retrying in ${delay}ms:`,
       error
     )
     await sleep(delay)
@@ -297,7 +293,8 @@ function cleanupExpiredCacheEntries(): void {
  * Enforce cache size limit by removing oldest entries
  */
 function enforceCacheSizeLimit(): void {
-  if (roomStateCache.size <= CACHE_CONFIG.MAX_SIZE) {
+  const cacheConfig = getCacheConfig()
+  if (roomStateCache.size <= cacheConfig.maxSize) {
     return
   }
 
@@ -306,7 +303,7 @@ function enforceCacheSizeLimit(): void {
     ([, a], [, b]) => a.expiresAt - b.expiresAt
   )
 
-  const entriesToRemove = roomStateCache.size - CACHE_CONFIG.MAX_SIZE
+  const entriesToRemove = roomStateCache.size - cacheConfig.maxSize
   for (let i = 0; i < entriesToRemove; i++) {
     const [roomId] = entries[i]
     roomStateCache.delete(roomId)
@@ -326,7 +323,7 @@ function startCacheCleanup(): void {
   cleanupInterval = setInterval(() => {
     cleanupExpiredCacheEntries()
     enforceCacheSizeLimit()
-  }, CACHE_CONFIG.CLEANUP_INTERVAL_MS)
+  }, getCacheConfig().cleanupIntervalMs)
 
   console.debug('Started room state cache cleanup interval')
 }
@@ -438,7 +435,7 @@ async function _broadcastRoomStateUpdateInternal(
     }
 
     // Update cache with current state and TTL
-    const expiresAt = Date.now() + CACHE_CONFIG.TTL_MS
+    const expiresAt = Date.now() + getCacheConfig().ttlMs
     roomStateCache.set(room.id, { room: cloneRoomForCache(room), expiresAt })
 
     // Start cleanup if not already started
@@ -513,7 +510,7 @@ export async function broadcastRoomStateUpdate(
 
       // Check if we've waited long enough and should force broadcast
       const waitTime = now - existingEntry.firstRequestTime
-      const shouldForce = waitTime >= DEBOUNCE_CONFIG.MAX_WAIT_MS
+      const shouldForce = waitTime >= getDebounceConfig().MAX_WAIT_MS
 
       if (shouldForce) {
         // Force broadcast now
@@ -539,7 +536,7 @@ export async function broadcastRoomStateUpdate(
           reject(error)
         }
       }
-    }, DEBOUNCE_CONFIG.DELAY_MS)
+    }, getDebounceConfig().DELAY_MS)
 
     debounceMap.set(roomId, {
       timeoutId,
@@ -761,7 +758,7 @@ export function getDebounceStats(): {
  * @param room - Room state to cache
  */
 export function preloadRoomStateCache(room: Room): void {
-  const expiresAt = Date.now() + CACHE_CONFIG.TTL_MS
+  const expiresAt = Date.now() + getCacheConfig().ttlMs
   roomStateCache.set(room.id, { room: cloneRoomForCache(room), expiresAt })
   startCacheCleanup()
   console.debug(`Preloaded room state cache for ${room.id}`)

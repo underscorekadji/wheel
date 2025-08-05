@@ -65,8 +65,8 @@ describe('Room State Broadcaster', () => {
       expiresAt: new Date(now.getTime() + 8 * 60 * 60 * 1000),
       currentPresenterId: null,
       wheelConfig: {
-        minSpinDuration: 2000,
-        maxSpinDuration: 5000,
+        minSpinDuration: 800, // Within test environment limits
+        maxSpinDuration: 1200, // Within test environment limits
         excludeFinished: true,
         allowRepeatSelections: false,
       },

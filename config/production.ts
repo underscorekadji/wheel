@@ -33,6 +33,35 @@ export const productionConfig: AppConfiguration = {
     path: '/socket.io/',
     corsCredentials: true,
   },
+  socketClient: {
+    maxReconnectAttempts: parseInt(process.env.SOCKET_MAX_RECONNECT_ATTEMPTS || '5', 10),
+    reconnectDelay: parseInt(process.env.SOCKET_RECONNECT_DELAY || '1000', 10),
+    connectionTimeout: parseInt(process.env.SOCKET_CONNECTION_TIMEOUT || '10000', 10),
+  },
+  wheel: {
+    minSpinDuration: parseInt(process.env.WHEEL_MIN_SPIN_DURATION || '1000', 10),
+    maxSpinDuration: parseInt(process.env.WHEEL_MAX_SPIN_DURATION || '15000', 10),
+    defaultMinSpin: parseInt(process.env.WHEEL_DEFAULT_MIN_SPIN || '2000', 10),
+    defaultMaxSpin: parseInt(process.env.WHEEL_DEFAULT_MAX_SPIN || '5000', 10),
+  },
+  cache: {
+    maxSize: parseInt(process.env.CACHE_MAX_SIZE || '1000', 10),
+    ttlMs: parseInt(process.env.CACHE_TTL_MS || String(8 * 60 * 60 * 1000), 10), // 8 hours
+    cleanupIntervalMs: parseInt(
+      process.env.CACHE_CLEANUP_INTERVAL_MS || String(30 * 60 * 1000),
+      10
+    ), // 30 minutes
+    retry: {
+      maxAttempts: parseInt(process.env.CACHE_RETRY_MAX_ATTEMPTS || '3', 10),
+      baseDelayMs: parseInt(process.env.CACHE_RETRY_BASE_DELAY_MS || '100', 10),
+      maxDelayMs: parseInt(process.env.CACHE_RETRY_MAX_DELAY_MS || '1000', 10),
+    },
+    debounceDelayMs: parseInt(process.env.CACHE_DEBOUNCE_DELAY_MS || '50', 10),
+    defaultPresentationDurationMs: parseInt(
+      process.env.DEFAULT_PRESENTATION_DURATION_MS || String(10 * 60 * 1000),
+      10
+    ), // 10 minutes
+  },
   security: {
     httpsEnabled: true,
     jwtSecret: process.env.JWT_SECRET,

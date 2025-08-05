@@ -38,6 +38,29 @@ export const mockConfiguration: AppConfiguration = {
     path: '/socket.io/',
     corsCredentials: true,
   },
+  socketClient: {
+    maxReconnectAttempts: 2, // Lower for tests
+    reconnectDelay: 100, // Faster for tests
+    connectionTimeout: 2000, // Shorter for tests
+  },
+  wheel: {
+    minSpinDuration: 500, // Test environment limits
+    maxSpinDuration: 2000, // Test environment limits
+    defaultMinSpin: 800, // Test environment defaults
+    defaultMaxSpin: 1200, // Test environment defaults
+  },
+  cache: {
+    maxSize: 10, // Very small for tests
+    ttlMs: 10 * 1000, // 10 seconds for tests
+    cleanupIntervalMs: 1000, // 1 second for tests
+    retry: {
+      maxAttempts: 2,
+      baseDelayMs: 10,
+      maxDelayMs: 100,
+    },
+    debounceDelayMs: 5, // Very short for tests
+    defaultPresentationDurationMs: 30 * 1000, // 30 seconds for tests
+  },
   security: {
     httpsEnabled: false,
     jwtSecret: 'test-jwt-secret-key-for-testing-only',
@@ -80,6 +103,29 @@ export const mockProductionConfiguration: AppConfiguration = {
     transports: ['polling', 'websocket'],
     path: '/socket.io/',
     corsCredentials: true,
+  },
+  socketClient: {
+    maxReconnectAttempts: 5,
+    reconnectDelay: 1000,
+    connectionTimeout: 10000,
+  },
+  wheel: {
+    minSpinDuration: 1000,
+    maxSpinDuration: 15000,
+    defaultMinSpin: 2000,
+    defaultMaxSpin: 5000,
+  },
+  cache: {
+    maxSize: 1000,
+    ttlMs: 8 * 60 * 60 * 1000, // 8 hours
+    cleanupIntervalMs: 30 * 60 * 1000, // 30 minutes
+    retry: {
+      maxAttempts: 3,
+      baseDelayMs: 100,
+      maxDelayMs: 1000,
+    },
+    debounceDelayMs: 50,
+    defaultPresentationDurationMs: 10 * 60 * 1000, // 10 minutes
   },
   security: {
     httpsEnabled: true,
@@ -126,6 +172,29 @@ export const mockDevelopmentConfiguration: AppConfiguration = {
     path: '/socket.io/',
     corsCredentials: true,
   },
+  socketClient: {
+    maxReconnectAttempts: 5,
+    reconnectDelay: 1000,
+    connectionTimeout: 10000,
+  },
+  wheel: {
+    minSpinDuration: 1000,
+    maxSpinDuration: 15000,
+    defaultMinSpin: 2000,
+    defaultMaxSpin: 5000,
+  },
+  cache: {
+    maxSize: 1000,
+    ttlMs: 8 * 60 * 60 * 1000, // 8 hours
+    cleanupIntervalMs: 30 * 60 * 1000, // 30 minutes
+    retry: {
+      maxAttempts: 3,
+      baseDelayMs: 100,
+      maxDelayMs: 1000,
+    },
+    debounceDelayMs: 50,
+    defaultPresentationDurationMs: 10 * 60 * 1000, // 10 minutes
+  },
   security: {
     httpsEnabled: false,
     jwtSecret: undefined,
@@ -167,6 +236,29 @@ export const invalidConfiguration = {
     path: 'no-slash', // Invalid path
     corsCredentials: 'not-boolean', // Wrong type
   },
+  socketClient: {
+    maxReconnectAttempts: -1, // Invalid negative value
+    reconnectDelay: 50, // Too short
+    connectionTimeout: 500, // Too short
+  },
+  wheel: {
+    minSpinDuration: 100, // Too short (below 500ms limit)
+    maxSpinDuration: 50000, // Too long (above limits)
+    defaultMinSpin: 100, // Too short
+    defaultMaxSpin: 50000, // Too long
+  },
+  cache: {
+    maxSize: 0, // Invalid
+    ttlMs: 500, // Too short
+    cleanupIntervalMs: 500, // Too short
+    retry: {
+      maxAttempts: 0, // Invalid
+      baseDelayMs: 5, // Too short
+      maxDelayMs: 50, // Too short
+    },
+    debounceDelayMs: 0, // Invalid
+    defaultPresentationDurationMs: 500, // Too short
+  },
   security: {
     httpsEnabled: 'not-boolean', // Wrong type
     jwtSecret: 'short', // Too short
@@ -179,7 +271,7 @@ export const invalidConfiguration = {
     maxConnections: 0, // Invalid
     maxRooms: 0, // Invalid
     cleanupIntervalMs: 500, // Too short
-    cleanupExpiryThresholdSeconds: 30, // Valid
+    cleanupExpiryThresholdSeconds: 5, // Too short
     cleanupMaxScanCount: 50, // Too small
   },
 }
@@ -218,6 +310,18 @@ export class MockConfigurationService {
 
   getPerformanceConfig() {
     return { ...this.config.performance }
+  }
+
+  getSocketClientConfig() {
+    return { ...this.config.socketClient }
+  }
+
+  getWheelConfig() {
+    return { ...this.config.wheel }
+  }
+
+  getCacheConfig() {
+    return { ...this.config.cache }
   }
 
   validateConfiguration() {
@@ -417,6 +521,29 @@ export const configFixtures = {
       transports: ['websocket'],
       path: '/socket.io/',
       corsCredentials: true,
+    },
+    socketClient: {
+      maxReconnectAttempts: 2,
+      reconnectDelay: 500,
+      connectionTimeout: 5000,
+    },
+    wheel: {
+      minSpinDuration: 500,
+      maxSpinDuration: 2000,
+      defaultMinSpin: 800,
+      defaultMaxSpin: 1200,
+    },
+    cache: {
+      maxSize: 10,
+      ttlMs: 30 * 1000, // 30 seconds
+      cleanupIntervalMs: 5 * 1000, // 5 seconds
+      retry: {
+        maxAttempts: 2,
+        baseDelayMs: 50,
+        maxDelayMs: 200,
+      },
+      debounceDelayMs: 10,
+      defaultPresentationDurationMs: 60 * 1000, // 1 minute
     },
     security: {
       httpsEnabled: false,

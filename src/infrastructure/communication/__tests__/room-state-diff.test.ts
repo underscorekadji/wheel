@@ -39,8 +39,8 @@ describe('Room State Diff Calculation', () => {
       expiresAt: new Date(now.getTime() + 8 * 60 * 60 * 1000), // 8 hours
       currentPresenterId: null,
       wheelConfig: {
-        minSpinDuration: 2000,
-        maxSpinDuration: 5000,
+        minSpinDuration: 800,
+        maxSpinDuration: 1200,
         excludeFinished: true,
         allowRepeatSelections: false,
       },

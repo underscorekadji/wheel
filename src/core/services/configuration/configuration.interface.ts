@@ -22,7 +22,7 @@ export interface RedisConfig {
 }
 
 /**
- * Socket.IO configuration interface
+ * Socket.IO server configuration interface
  */
 export interface SocketConfig {
   /** Port for dedicated Socket.IO HTTP server */
@@ -35,6 +35,18 @@ export interface SocketConfig {
   path: string
   /** Enable credentials for CORS */
   corsCredentials: boolean
+}
+
+/**
+ * Socket.IO client configuration interface
+ */
+export interface SocketClientConfig {
+  /** Maximum reconnection attempts */
+  maxReconnectAttempts: number
+  /** Delay between reconnection attempts in milliseconds */
+  reconnectDelay: number
+  /** Socket connection timeout in milliseconds */
+  connectionTimeout: number
 }
 
 /**
@@ -71,6 +83,42 @@ export interface SecurityConfig {
 }
 
 /**
+ * Wheel configuration interface
+ */
+export interface WheelConfig {
+  /** Minimum spin duration in milliseconds */
+  minSpinDuration: number
+  /** Maximum spin duration in milliseconds */
+  maxSpinDuration: number
+  /** Default minimum spin duration in milliseconds */
+  defaultMinSpin: number
+  /** Default maximum spin duration in milliseconds */
+  defaultMaxSpin: number
+}
+
+/**
+ * Cache configuration interface
+ */
+export interface CacheConfig {
+  /** Maximum number of cached rooms */
+  maxSize: number
+  /** Cache TTL in milliseconds */
+  ttlMs: number
+  /** Cleanup interval in milliseconds */
+  cleanupIntervalMs: number
+  /** Retry configuration */
+  retry: {
+    maxAttempts: number
+    baseDelayMs: number
+    maxDelayMs: number
+  }
+  /** Debounce delay in milliseconds */
+  debounceDelayMs: number
+  /** Default presentation duration in milliseconds */
+  defaultPresentationDurationMs: number
+}
+
+/**
  * Performance configuration interface
  */
 export interface PerformanceConfig {
@@ -93,6 +141,9 @@ export interface AppConfiguration {
   app: AppConfig
   redis: RedisConfig
   socket: SocketConfig
+  socketClient: SocketClientConfig
+  wheel: WheelConfig
+  cache: CacheConfig
   security: SecurityConfig
   performance: PerformanceConfig
 }
@@ -140,6 +191,9 @@ export interface IConfigurationService {
   getAppConfig(): AppConfig
   getRedisConfig(): RedisConfig
   getSocketConfig(): SocketConfig
+  getSocketClientConfig(): SocketClientConfig
+  getWheelConfig(): WheelConfig
+  getCacheConfig(): CacheConfig
   getSecurityConfig(): SecurityConfig
   getPerformanceConfig(): PerformanceConfig
 
