@@ -1,85 +1,63 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-export default function HomePage() {
-  const [text, setText] = useState('')
-  const [receivedText, setReceivedText] = useState('')
-  const [connectionStatus, setConnectionStatus] = useState<
-    'connecting' | 'connected' | 'disconnected'
-  >('connecting')
-  const [testRoomId, setTestRoomId] = useState('')
-  const [clientId, setClientId] = useState('')
-  const eventSourceRef = useRef<EventSource | null>(null)
+export default function StartPage() {
+  const router = useRouter()
+  const [joinRoomId, setJoinRoomId] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [isJoining, setIsJoining] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
 
-  useEffect(() => {
-    // Use fixed room for testing - all tabs will share the same room
-    const roomId = 'test-room'
-    const generatedClientId = Math.random().toString(36).substring(2, 15)
+  const handleCreateRoom = async () => {
+    setIsCreating(true)
+    setErrorMessage('')
 
-    setTestRoomId(roomId)
-    setClientId(generatedClientId)
+    try {
+      const response = await fetch('/api/room', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
 
-    // Use Server-Sent Events for real-time updates
-    const eventSource = new EventSource(`/api/live-text?room=${roomId}&client=${generatedClientId}`)
-    eventSourceRef.current = eventSource
-
-    eventSource.onopen = () => {
-      console.info('Connected to live text stream')
-      setConnectionStatus('connected')
-    }
-
-    eventSource.onmessage = event => {
-      const data = JSON.parse(event.data)
-
-      if (data.clientId !== generatedClientId) {
-        setReceivedText(data.text)
+      if (!response.ok) {
+        throw new Error('Failed to create room')
       }
-    }
 
-    eventSource.onerror = () => {
-      setConnectionStatus('disconnected')
-    }
-
-    return () => {
-      eventSource.close()
-    }
-  }, [])
-
-  const handleTextChange = async (newText: string) => {
-    setText(newText)
-
-    // Send text update via POST request
-    if (connectionStatus === 'connected') {
-      try {
-        await fetch('/api/live-text', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            room: testRoomId,
-            text: newText,
-            clientId: clientId,
-          }),
-        })
-      } catch (error) {
-        console.error('Failed to send text update:', error)
-      }
+      const result = (await response.json()) as { roomId: string }
+      router.push(`/room/${result.roomId}`)
+    } catch (error) {
+      console.error('Error creating room:', error)
+      setErrorMessage('Failed to create room. Please try again.')
+    } finally {
+      setIsCreating(false)
     }
   }
 
-  const getStatusColor = () => {
-    switch (connectionStatus) {
-      case 'connected':
-        return 'text-green-600'
-      case 'connecting':
-        return 'text-yellow-600'
-      case 'disconnected':
-        return 'text-red-600'
-      default:
-        return 'text-gray-600'
+  const handleJoinRoom = (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsJoining(true)
+    setErrorMessage('')
+
+    const trimmedRoomId = joinRoomId.trim()
+
+    if (!trimmedRoomId) {
+      setErrorMessage('Please enter a room ID')
+      setIsJoining(false)
+      return
     }
+
+    // Basic UUID format validation
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidPattern.test(trimmedRoomId)) {
+      setErrorMessage('Please enter a valid room ID (UUID format)')
+      setIsJoining(false)
+      return
+    }
+
+    router.push(`/room/${trimmedRoomId}`)
   }
 
   return (
@@ -89,71 +67,123 @@ export default function HomePage() {
           <h1 className='text-4xl font-bold text-gray-900 dark:text-white mb-6'>
             Welcome to Wheel
           </h1>
-          <p className='text-xl text-gray-600 dark:text-gray-300 mb-2'>
+          <p className='text-xl text-gray-600 dark:text-gray-300 mb-8'>
             Real-time spinning wheel app for presenter selection
           </p>
-          <div className='flex items-center justify-center gap-2 mb-8'>
-            <span className='text-sm text-gray-600 dark:text-gray-400'>Socket Status:</span>
-            <span className={`text-sm font-medium ${getStatusColor()}`}>{connectionStatus}</span>
-          </div>
         </div>
 
-        <div className='max-w-2xl mx-auto mb-12'>
+        <div className='max-w-md mx-auto space-y-8'>
+          {/* Create New Room Section */}
           <div className='bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6'>
-            <h2 className='text-2xl font-bold text-gray-900 dark:text-white mb-4'>
-              Live Text Test
+            <h2 className='text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center'>
+              Create New Room
             </h2>
-            <div className='space-y-6'>
+            <p className='text-gray-600 dark:text-gray-300 mb-6 text-center'>
+              Start a new session and invite others to join
+            </p>
+            <button
+              onClick={handleCreateRoom}
+              disabled={isCreating}
+              className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center'
+            >
+              {isCreating ? (
+                <>
+                  <svg
+                    className='animate-spin -ml-1 mr-3 h-5 w-5 text-white'
+                    xmlns='http://www.w3.org/2000/svg'
+                    fill='none'
+                    viewBox='0 0 24 24'
+                  >
+                    <circle
+                      className='opacity-25'
+                      cx='12'
+                      cy='12'
+                      r='10'
+                      stroke='currentColor'
+                      strokeWidth='4'
+                    ></circle>
+                    <path
+                      className='opacity-75'
+                      fill='currentColor'
+                      d='m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                    ></path>
+                  </svg>
+                  Creating Room...
+                </>
+              ) : (
+                'Create Room'
+              )}
+            </button>
+          </div>
+
+          {/* Join Room Section */}
+          <div className='bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6'>
+            <h2 className='text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center'>
+              Join Existing Room
+            </h2>
+            <p className='text-gray-600 dark:text-gray-300 mb-6 text-center'>
+              Enter the room ID to join an existing session
+            </p>
+            <form onSubmit={handleJoinRoom} className='space-y-4'>
               <div>
                 <label
-                  htmlFor='text-input'
+                  htmlFor='room-id'
                   className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'
                 >
-                  Your Text (will sync in real-time)
+                  Room ID (UUID)
                 </label>
-                <textarea
-                  id='text-input'
-                  value={text}
-                  onChange={e => handleTextChange(e.target.value)}
-                  placeholder='Type something to test real-time sync...'
-                  className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white resize-none'
-                  rows={4}
-                  disabled={connectionStatus !== 'connected'}
+                <input
+                  type='text'
+                  id='room-id'
+                  value={joinRoomId}
+                  onChange={e => setJoinRoomId(e.target.value)}
+                  placeholder='e.g., 123e4567-e89b-12d3-a456-426614174000'
+                  className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white'
+                  required
                 />
-                <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
-                  Characters: {text.length} | Room ID: {testRoomId || 'Generating...'}
-                </p>
               </div>
+              <button
+                type='submit'
+                disabled={isJoining}
+                className='w-full bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center'
+              >
+                {isJoining ? (
+                  <>
+                    <svg
+                      className='animate-spin -ml-1 mr-3 h-5 w-5 text-white'
+                      xmlns='http://www.w3.org/2000/svg'
+                      fill='none'
+                      viewBox='0 0 24 24'
+                    >
+                      <circle
+                        className='opacity-25'
+                        cx='12'
+                        cy='12'
+                        r='10'
+                        stroke='currentColor'
+                        strokeWidth='4'
+                      ></circle>
+                      <path
+                        className='opacity-75'
+                        fill='currentColor'
+                        d='m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'
+                      ></path>
+                    </svg>
+                    Joining...
+                  </>
+                ) : (
+                  'Join Room'
+                )}
+              </button>
+            </form>
+          </div>
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
-                  Received from Others
-                </label>
-                <div className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-600 min-h-[100px]'>
-                  <p className='text-gray-700 dark:text-gray-300 whitespace-pre-wrap'>
-                    {receivedText || 'No messages received yet...'}
-                  </p>
-                </div>
-              </div>
-
-              <div className='text-xs text-gray-500 dark:text-gray-400 space-y-1'>
-                <p>• Open this page in multiple tabs to test real-time sync</p>
-                <p>• Text changes are broadcast instantly to all connected clients</p>
-                <p>• Client ID: {clientId || 'Generating...'}</p>
-              </div>
+          {/* Error Message */}
+          {errorMessage && (
+            <div className='bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg p-4'>
+              <p className='text-red-700 dark:text-red-300 text-sm text-center'>{errorMessage}</p>
             </div>
-          </div>
-        </div>
-
-        <div className='text-center'>
-          <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-            <button className='bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors'>
-              Create Room
-            </button>
-            <button className='bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors'>
-              Join Room
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </main>
