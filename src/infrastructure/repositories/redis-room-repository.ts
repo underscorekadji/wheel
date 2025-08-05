@@ -15,27 +15,36 @@ import {
 } from '../../domain/room/value-objects/participant-attributes'
 import { ParticipantName } from '../../domain/room/value-objects/names'
 import { RoomRepository } from '../../domain/room/repository/room-repository'
-import { getRedisClient, ROOM_KEY_PREFIX, ROOM_TTL_SECONDS } from '../persistence/redis-client'
+import { getRedisClient } from '../persistence/redis-client'
+import { configurationService } from '../../core/services/configuration'
 import { safeValidateRoom } from '../validation/zod-schemas'
 
 /**
  * Redis implementation of Room Repository
  */
 export class RedisRoomRepository implements RoomRepository {
+  private readonly keyPrefix: string
+  private readonly roomTtlSeconds: number
+
+  constructor() {
+    const redisConfig = configurationService.getRedisConfig()
+    this.keyPrefix = redisConfig.keyPrefix
+    this.roomTtlSeconds = redisConfig.roomTtlSeconds
+  }
   async save(room: Room): Promise<void> {
     const redis = await getRedisClient()
-    const key = `${ROOM_KEY_PREFIX}${room.id.value}`
+    const key = `${this.keyPrefix}${room.id.value}`
 
     // Convert domain object to plain object for storage
     const plainRoom = room.toPlainObject()
 
     // Store with TTL
-    await redis.setex(key, ROOM_TTL_SECONDS, JSON.stringify(plainRoom))
+    await redis.setex(key, this.roomTtlSeconds, JSON.stringify(plainRoom))
   }
 
   async findById(roomId: RoomId): Promise<Room | null> {
     const redis = await getRedisClient()
-    const key = `${ROOM_KEY_PREFIX}${roomId.value}`
+    const key = `${this.keyPrefix}${roomId.value}`
 
     const data = await redis.get(key)
     if (!data) {
@@ -61,7 +70,7 @@ export class RedisRoomRepository implements RoomRepository {
 
   async exists(roomId: RoomId): Promise<boolean> {
     const redis = await getRedisClient()
-    const key = `${ROOM_KEY_PREFIX}${roomId.value}`
+    const key = `${this.keyPrefix}${roomId.value}`
 
     const exists = await redis.exists(key)
     return exists === 1
@@ -69,7 +78,7 @@ export class RedisRoomRepository implements RoomRepository {
 
   async delete(roomId: RoomId): Promise<boolean> {
     const redis = await getRedisClient()
-    const key = `${ROOM_KEY_PREFIX}${roomId.value}`
+    const key = `${this.keyPrefix}${roomId.value}`
 
     const deleted = await redis.del(key)
     return deleted === 1
@@ -77,14 +86,14 @@ export class RedisRoomRepository implements RoomRepository {
 
   async getTTL(roomId: RoomId): Promise<number> {
     const redis = await getRedisClient()
-    const key = `${ROOM_KEY_PREFIX}${roomId.value}`
+    const key = `${this.keyPrefix}${roomId.value}`
 
     return await redis.ttl(key)
   }
 
   async findExpiredRooms(): Promise<RoomId[]> {
     const redis = await getRedisClient()
-    const pattern = `${ROOM_KEY_PREFIX}*`
+    const pattern = `${this.keyPrefix}*`
 
     const keys = await redis.keys(pattern)
     const expiredRoomIds: RoomId[] = []
@@ -92,7 +101,7 @@ export class RedisRoomRepository implements RoomRepository {
     for (const key of keys) {
       const ttl = await redis.ttl(key)
       if (ttl <= 0) {
-        const roomId = key.replace(ROOM_KEY_PREFIX, '')
+        const roomId = key.replace(this.keyPrefix, '')
         try {
           expiredRoomIds.push(new RoomId(roomId))
         } catch {

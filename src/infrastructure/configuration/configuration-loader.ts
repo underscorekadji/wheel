@@ -60,6 +60,16 @@ const ENV_MAPPINGS: EnvironmentVariableMapping[] = [
   { envKey: 'MAX_CONNECTIONS', configPath: 'performance.maxConnections', type: 'number' },
   { envKey: 'MAX_ROOMS', configPath: 'performance.maxRooms', type: 'number' },
   { envKey: 'CLEANUP_INTERVAL_MS', configPath: 'performance.cleanupIntervalMs', type: 'number' },
+  {
+    envKey: 'CLEANUP_EXPIRY_THRESHOLD_SECONDS',
+    configPath: 'performance.cleanupExpiryThresholdSeconds',
+    type: 'number',
+  },
+  {
+    envKey: 'CLEANUP_MAX_SCAN_COUNT',
+    configPath: 'performance.cleanupMaxScanCount',
+    type: 'number',
+  },
 ]
 
 /**

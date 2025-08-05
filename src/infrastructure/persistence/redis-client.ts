@@ -275,17 +275,3 @@ export async function closeRedisConnection(): Promise<void> {
     }
   }
 }
-
-// Export configuration-related values for backward compatibility
-// Note: These are now dynamic based on the configuration service
-export function getRoomKeyPrefix(): string {
-  return configurationService.getRedisConfig().keyPrefix
-}
-
-export function getRoomTtlSeconds(): number {
-  return configurationService.getRedisConfig().roomTtlSeconds
-}
-
-// Legacy exports for tests - these point to functions that return current config values
-export const ROOM_KEY_PREFIX = getRoomKeyPrefix()
-export const ROOM_TTL_SECONDS = getRoomTtlSeconds()

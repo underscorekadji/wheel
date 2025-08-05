@@ -45,5 +45,7 @@ export const productionConfig: AppConfiguration = {
     maxConnections: 3000, // As per scalability target
     maxRooms: 100, // As per scalability target
     cleanupIntervalMs: 5 * 60 * 1000, // 5 minutes
+    cleanupExpiryThresholdSeconds: 60 * 60, // 1 hour
+    cleanupMaxScanCount: 1000, // Maximum keys to scan per cleanup cycle
   },
 }

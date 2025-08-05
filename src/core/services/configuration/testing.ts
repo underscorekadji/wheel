@@ -50,6 +50,8 @@ export const mockConfiguration: AppConfiguration = {
     maxConnections: 50, // Lower for tests
     maxRooms: 5, // Lower for tests
     cleanupIntervalMs: 1000, // 1 second for faster tests
+    cleanupExpiryThresholdSeconds: 30, // 30 seconds for tests
+    cleanupMaxScanCount: 100, // Smaller scan count for tests
   },
 }
 
@@ -91,6 +93,8 @@ export const mockProductionConfiguration: AppConfiguration = {
     maxConnections: 3000,
     maxRooms: 100,
     cleanupIntervalMs: 5 * 60 * 1000, // 5 minutes
+    cleanupExpiryThresholdSeconds: 60 * 60, // 1 hour
+    cleanupMaxScanCount: 1000, // Standard scan count
   },
 }
 
@@ -134,6 +138,8 @@ export const mockDevelopmentConfiguration: AppConfiguration = {
     maxConnections: 3000,
     maxRooms: 100,
     cleanupIntervalMs: 60 * 1000, // 1 minute
+    cleanupExpiryThresholdSeconds: 60 * 60, // 1 hour
+    cleanupMaxScanCount: 1000, // Standard scan count
   },
 }
 
@@ -173,6 +179,8 @@ export const invalidConfiguration = {
     maxConnections: 0, // Invalid
     maxRooms: 0, // Invalid
     cleanupIntervalMs: 500, // Too short
+    cleanupExpiryThresholdSeconds: 30, // Valid
+    cleanupMaxScanCount: 50, // Too small
   },
 }
 
@@ -421,6 +429,8 @@ export const configFixtures = {
       maxConnections: 10,
       maxRooms: 1,
       cleanupIntervalMs: 1000,
+      cleanupExpiryThresholdSeconds: 60,
+      cleanupMaxScanCount: 100,
     },
   }),
 

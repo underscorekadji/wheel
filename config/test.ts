@@ -43,5 +43,7 @@ export const testConfig: AppConfiguration = {
     maxConnections: 100, // Lower limits for tests
     maxRooms: 10,
     cleanupIntervalMs: 5 * 1000, // 5 seconds for faster test cleanup
+    cleanupExpiryThresholdSeconds: 30, // 30 seconds for tests
+    cleanupMaxScanCount: 100, // Smaller scan count for tests
   },
 }

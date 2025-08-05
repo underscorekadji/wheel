@@ -7,11 +7,10 @@ import {
   deleteRoom,
   getRoomTTL,
   getRoomKey,
-  ROOM_TTL_SECONDS,
-  ROOM_KEY_PREFIX,
   getRedisClient,
   closeRedisConnection,
 } from '../redis-client'
+import { configurationService } from '../../../core/services/configuration'
 
 // Mock ioredis
 vi.mock('ioredis', () => {
@@ -105,12 +104,12 @@ describe('Redis Helper Functions', () => {
   describe('Redis Configuration', () => {
     it('should have correct TTL constant for test environment', () => {
       // In test environment, TTL is 60 seconds (as configured in test.ts)
-      expect(ROOM_TTL_SECONDS).toBe(60)
+      expect(configurationService.getRedisConfig().roomTtlSeconds).toBe(60)
     })
 
     it('should have correct key prefix for test environment', () => {
       // In test environment, prefix is 'test:room:' (as configured in test.ts)
-      expect(ROOM_KEY_PREFIX).toBe('test:room:')
+      expect(configurationService.getRedisConfig().keyPrefix).toBe('test:room:')
     })
 
     it('should generate correct room key with test prefix', () => {
@@ -151,7 +150,7 @@ describe('Redis Helper Functions', () => {
       expect(result).toBe(true)
       expect(mockRedisInstance.setex).toHaveBeenCalledWith(
         'test:room:550e8400-e29b-41d4-a716-446655440000',
-        ROOM_TTL_SECONDS,
+        configurationService.getRedisConfig().roomTtlSeconds,
         JSON.stringify(mockRoom)
       )
     })

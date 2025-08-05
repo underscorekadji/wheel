@@ -80,6 +80,10 @@ export interface PerformanceConfig {
   maxRooms: number
   /** Cleanup job interval in milliseconds */
   cleanupIntervalMs: number
+  /** TTL threshold in seconds for cleanup (consider keys expiring within this time) */
+  cleanupExpiryThresholdSeconds: number
+  /** Maximum number of keys to scan in one cleanup cycle */
+  cleanupMaxScanCount: number
 }
 
 /**

@@ -30,7 +30,6 @@ vi.mock('../../communication/socket-server', () => ({
 // Mock Redis
 vi.mock('../redis-client', () => ({
   getRedisClient: vi.fn(() => Promise.resolve(mockRedisClient)),
-  ROOM_KEY_PREFIX: 'room:',
 }))
 
 // Import after mocking
@@ -114,14 +113,17 @@ describe('Redis Cleanup', () => {
       // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 200))
 
-      expect(mockRedisClient.scan).toHaveBeenCalledWith('0', 'MATCH', 'room:*', 'COUNT', '100')
+      expect(mockRedisClient.scan).toHaveBeenCalledWith('0', 'MATCH', 'test:room:*', 'COUNT', '100')
     })
 
     it('should identify expired keys', async () => {
-      mockRedisClient.scan.mockResolvedValue(['0', ['room:expired-1', 'room:soon-expired-2']])
+      mockRedisClient.scan.mockResolvedValue([
+        '0',
+        ['test:room:expired-1', 'test:room:soon-expired-2'],
+      ])
       mockRedisClient.ttl
         .mockResolvedValueOnce(-2) // expired-1: already expired
-        .mockResolvedValueOnce(1800) // soon-expired-2: expires in 30 minutes (within threshold)
+        .mockResolvedValueOnce(20) // soon-expired-2: expires in 20 seconds (within 30s threshold)
 
       startRedisCleanupJob()
 
@@ -144,7 +146,7 @@ describe('Redis Cleanup', () => {
 
       mockSocketServer._nsps.set('/room:test-room', mockNamespace)
 
-      mockRedisClient.scan.mockResolvedValue(['0', ['room:test-room']])
+      mockRedisClient.scan.mockResolvedValue(['0', ['test:room:test-room']])
       mockRedisClient.ttl.mockResolvedValue(-2) // Expired
 
       startRedisCleanupJob()
@@ -180,7 +182,7 @@ describe('Redis Cleanup', () => {
       await new Promise(resolve => setTimeout(resolve, 200))
 
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining('Reached maximum scan count (1000)')
+        expect.stringContaining('Reached maximum scan count (100)')
       )
     })
 
@@ -206,7 +208,7 @@ describe('Redis Cleanup', () => {
     })
 
     it('should clear memory caches for expired rooms', async () => {
-      mockRedisClient.scan.mockResolvedValue(['0', ['room:test-room']])
+      mockRedisClient.scan.mockResolvedValue(['0', ['test:room:test-room']])
       mockRedisClient.ttl.mockResolvedValue(-2) // Expired
 
       startRedisCleanupJob()
@@ -219,11 +221,11 @@ describe('Redis Cleanup', () => {
   })
 
   describe('configuration', () => {
-    it('should have correct cleanup configuration', () => {
-      expect(CLEANUP_CONFIG.CLEANUP_INTERVAL_MS).toBe(2 * 60 * 60 * 1000) // 2 hours
-      expect(CLEANUP_CONFIG.EXPIRY_THRESHOLD_SECONDS).toBe(60 * 60) // 1 hour
-      expect(CLEANUP_CONFIG.MAX_SCAN_COUNT).toBe(1000)
-      expect(CLEANUP_CONFIG.SCAN_PATTERN).toBe('room:*')
+    it('should have correct cleanup configuration from test config', () => {
+      expect(CLEANUP_CONFIG.CLEANUP_INTERVAL_MS).toBe(5 * 1000) // 5 seconds for tests
+      expect(CLEANUP_CONFIG.EXPIRY_THRESHOLD_SECONDS).toBe(30) // 30 seconds for tests
+      expect(CLEANUP_CONFIG.MAX_SCAN_COUNT).toBe(100) // 100 for tests
+      expect(CLEANUP_CONFIG.SCAN_PATTERN).toBe('test:room:*')
     })
   })
 })

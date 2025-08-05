@@ -8,26 +8,46 @@
  * application-level cleanup (memory caches and Socket namespaces).
  */
 
-import { getRedisClient, ROOM_KEY_PREFIX } from './redis-client'
+import { getRedisClient } from './redis-client'
+import { configurationService } from '../../core/services/configuration'
 import { clearRoomStateCache, clearRoomDebounce } from '../communication/room-state-broadcaster'
 import { getSocketServer } from '../communication/socket-server'
 
 /**
- * Configuration for Redis cleanup job
+ * Configuration class for Redis cleanup job
  */
-export const CLEANUP_CONFIG = {
-  // Run cleanup every 2 hours (ensures cleanup runs multiple times during 8-hour TTL)
-  CLEANUP_INTERVAL_MS: 2 * 60 * 60 * 1000, // 2 hours
+class RedisCleanupConfig {
+  // Cleanup job interval in milliseconds
+  public readonly CLEANUP_INTERVAL_MS: number
 
-  // Consider keys that expire within next hour as "soon to expire"
-  EXPIRY_THRESHOLD_SECONDS: 60 * 60, // 1 hour
+  // Consider keys that expire within this time as "soon to expire"
+  public readonly EXPIRY_THRESHOLD_SECONDS: number
 
   // Maximum number of keys to scan in one cleanup cycle
-  MAX_SCAN_COUNT: 1000,
+  public readonly MAX_SCAN_COUNT: number
 
   // Pattern for scanning room keys
-  SCAN_PATTERN: `${ROOM_KEY_PREFIX}*`,
-} as const
+  public readonly SCAN_PATTERN: string
+
+  // Key prefix for room keys
+  public readonly KEY_PREFIX: string
+
+  constructor() {
+    const redisConfig = configurationService.getRedisConfig()
+    const performanceConfig = configurationService.getPerformanceConfig()
+
+    this.KEY_PREFIX = redisConfig.keyPrefix
+    this.SCAN_PATTERN = `${this.KEY_PREFIX}*`
+    this.CLEANUP_INTERVAL_MS = performanceConfig.cleanupIntervalMs
+    this.EXPIRY_THRESHOLD_SECONDS = performanceConfig.cleanupExpiryThresholdSeconds
+    this.MAX_SCAN_COUNT = performanceConfig.cleanupMaxScanCount
+  }
+}
+
+/**
+ * Singleton instance of cleanup configuration
+ */
+export const CLEANUP_CONFIG = new RedisCleanupConfig()
 
 /**
  * Global cleanup interval reference
@@ -72,7 +92,7 @@ async function scanForExpiredKeys(
 
         if (ttl === -2 || (ttl >= 0 && ttl <= CLEANUP_CONFIG.EXPIRY_THRESHOLD_SECONDS)) {
           // Key is expired or will expire soon
-          const roomId = key.replace(ROOM_KEY_PREFIX, '')
+          const roomId = key.replace(CLEANUP_CONFIG.KEY_PREFIX, '')
           expiredRoomIds.push(roomId)
         }
       } catch (error) {

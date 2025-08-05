@@ -79,6 +79,11 @@ export const performanceConfigSchema = z.object({
   maxConnections: z.number().int().min(1, 'Max connections must be at least 1'),
   maxRooms: z.number().int().min(1, 'Max rooms must be at least 1'),
   cleanupIntervalMs: z.number().int().min(1000, 'Cleanup interval must be at least 1000ms'),
+  cleanupExpiryThresholdSeconds: z
+    .number()
+    .int()
+    .min(10, 'Cleanup expiry threshold must be at least 10 seconds'),
+  cleanupMaxScanCount: z.number().int().min(100, 'Cleanup max scan count must be at least 100'),
 })
 
 /**
