@@ -25,7 +25,7 @@ export default function StartPage() {
       }
 
       const result = (await response.json()) as { roomId: string }
-      window.location.href = `/room/${result.roomId}`
+      router.push(`/room/${result.roomId}`)
     } catch (error) {
       console.error('Error creating room:', error)
       setErrorMessage('Failed to create room. Please try again.')
@@ -55,7 +55,7 @@ export default function StartPage() {
       return
     }
 
-    window.location.href = `/room/${trimmedRoomId}`
+    router.push(`/room/${trimmedRoomId}`)
   }
 
   return (
