@@ -14,5 +14,5 @@ export {
   getEnvironmentVariableMappings,
 } from '@/infrastructure/configuration/configuration-loader'
 
-// Testing utilities (only import in test files)
-export * from './testing'
+// Testing utilities - DO NOT IMPORT - use direct import in test files only
+// export * from './testing'
