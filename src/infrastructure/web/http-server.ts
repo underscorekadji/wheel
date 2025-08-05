@@ -1,4 +1,5 @@
 import { createServer, Server as HttpServer } from 'http'
+import { configurationService } from '@/core/services/configuration'
 
 /**
  * HTTP Server singleton for Socket.IO
@@ -38,8 +39,9 @@ class HttpServerManager {
 
     this.httpServer = createServer()
 
-    // Start the server on a dedicated port for Socket.IO
-    const socketPort = parseInt(process.env.SOCKET_PORT || '3001', 10)
+    // Start the server on port from configuration
+    const socketConfig = configurationService.getSocketConfig()
+    const socketPort = socketConfig.port
 
     if (!this.isListening) {
       this.httpServer.listen(socketPort, () => {
@@ -48,7 +50,8 @@ class HttpServerManager {
       })
 
       // Handle server cleanup on process termination (production only)
-      if (process.env.NODE_ENV === 'production') {
+      const appConfig = configurationService.getAppConfig()
+      if (appConfig.environment === 'production') {
         process.on('SIGTERM', () => {
           this.cleanup()
         })

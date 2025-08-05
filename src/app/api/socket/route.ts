@@ -5,6 +5,7 @@ import {
   isSocketServerInitialized,
 } from '@/infrastructure/communication/socket-server'
 import { startRedisCleanupJob } from '@/infrastructure/persistence/redis-cleanup'
+import { configurationService } from '@/core/services/configuration'
 import type {
   RoomStateUpdateEvent,
   ParticipantUpdateEvent,
@@ -73,18 +74,21 @@ export async function GET() {
  * @returns Configured Socket.IO server instance
  */
 function initializeSocketServer(): SocketIOServer {
-  // Create Socket.IO server with simplified configuration
+  const socketConfig = configurationService.getSocketConfig()
+  const appConfig = configurationService.getAppConfig()
+
+  // Create Socket.IO server with configuration from centralized service
   const socketServer = new SocketIOServer({
     cors: {
       origin:
-        process.env.NODE_ENV === 'production'
-          ? [process.env.NEXT_PUBLIC_APP_URL || 'https://localhost:3000']
-          : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+        appConfig.environment === 'production'
+          ? socketConfig.corsOrigins
+          : socketConfig.corsOrigins,
       methods: ['GET', 'POST'],
-      credentials: true,
+      credentials: socketConfig.corsCredentials,
     },
-    transports: ['polling', 'websocket'],
-    path: '/socket.io/',
+    transports: socketConfig.transports,
+    path: socketConfig.path,
   })
 
   // Set up room-based namespace pattern: room:{id}
