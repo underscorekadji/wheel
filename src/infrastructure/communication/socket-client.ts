@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client'
+import { configurationService } from '@/core/services/configuration'
 import type {
   SocketEventMap,
   SocketConfig,
@@ -26,9 +27,12 @@ export class SocketManager {
   private config: SocketConfig | null = null
   private status: SocketStatus = 'disconnected'
   private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectDelay = 1000
   private reconnectTimeoutId: NodeJS.Timeout | null = null
+
+  // Get configuration values from centralized configuration service
+  private get socketClientConfig() {
+    return configurationService.getSocketClientConfig()
+  }
 
   /**
    * Connect to a room namespace
@@ -49,13 +53,15 @@ export class SocketManager {
       // Create socket connection to room namespace
       const namespace = `/room:${config.roomId}`
 
+      const clientConfig = this.socketClientConfig
+
       this.socket = io(`${config.url}${namespace}`, {
         transports: ['websocket', 'polling'],
         autoConnect: true,
         reconnection: true,
-        reconnectionAttempts: this.maxReconnectAttempts,
-        reconnectionDelay: this.reconnectDelay,
-        timeout: 10000,
+        reconnectionAttempts: clientConfig.maxReconnectAttempts,
+        reconnectionDelay: clientConfig.reconnectDelay,
+        timeout: clientConfig.connectionTimeout,
       })
 
       // Set up connection event handlers
@@ -108,9 +114,10 @@ export class SocketManager {
         return
       }
 
+      const clientConfig = this.socketClientConfig
       const timeout = setTimeout(() => {
         reject(new Error('Connection timeout'))
-      }, 10000)
+      }, clientConfig.connectionTimeout)
 
       this.socket.on('connected', () => {
         clearTimeout(timeout)
@@ -164,8 +171,9 @@ export class SocketManager {
    */
   private handleReconnection(): void {
     this.reconnectAttempts++
+    const clientConfig = this.socketClientConfig
 
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+    if (this.reconnectAttempts >= clientConfig.maxReconnectAttempts) {
       console.error('Max reconnection attempts reached')
       this.status = 'error'
       return
@@ -181,7 +189,7 @@ export class SocketManager {
       if (this.config && this.status !== 'connected') {
         this.connect(this.config)
       }
-    }, this.reconnectDelay * this.reconnectAttempts)
+    }, clientConfig.reconnectDelay * this.reconnectAttempts)
   }
 
   // Event emission methods

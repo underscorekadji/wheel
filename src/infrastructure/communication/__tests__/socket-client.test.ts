@@ -58,9 +58,9 @@ describe('SocketManager', () => {
           transports: ['websocket', 'polling'],
           autoConnect: true,
           reconnection: true,
-          reconnectionAttempts: 5,
-          reconnectionDelay: 1000,
-          timeout: 10000,
+          reconnectionAttempts: 2, // Test environment value
+          reconnectionDelay: 500, // Test environment value
+          timeout: 5000, // Test environment value
         })
       )
 
@@ -347,8 +347,7 @@ describe('SocketManager', () => {
       socketManager['setupConnectionHandlers']()
 
       // Set up reconnection error scenario
-      socketManager['reconnectAttempts'] = 4 // Will become 5 after increment
-      socketManager['maxReconnectAttempts'] = 5
+      socketManager['reconnectAttempts'] = 1 // Will become 2 after increment (test environment max is 2)
       socketManager['status'] = 'connecting'
 
       const reconnectErrorCallback = mockSocket.on.mock.calls.find(

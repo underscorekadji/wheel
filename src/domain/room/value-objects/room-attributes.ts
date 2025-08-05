@@ -1,3 +1,5 @@
+import { configurationService } from '@/core/services/configuration'
+
 /**
  * Room Status value object
  */
@@ -81,10 +83,10 @@ export class RoomStatus {
  * Wheel Configuration value object
  */
 export class WheelConfig {
-  private static readonly MIN_SPIN_DURATION = 1000 // 1 second
-  private static readonly MAX_SPIN_DURATION = 15000 // 15 seconds
-  private static readonly DEFAULT_MIN_SPIN = 2000 // 2 seconds
-  private static readonly DEFAULT_MAX_SPIN = 5000 // 5 seconds
+  // Configuration limits and defaults are now sourced from centralized configuration
+  private static get wheelConfigLimits() {
+    return configurationService.getWheelConfig()
+  }
 
   constructor(
     private readonly _minSpinDuration: number,
@@ -112,14 +114,14 @@ export class WheelConfig {
   }
 
   private validate(): void {
-    if (this._minSpinDuration < WheelConfig.MIN_SPIN_DURATION) {
-      throw new Error(
-        `Minimum spin duration cannot be less than ${WheelConfig.MIN_SPIN_DURATION}ms`
-      )
+    const limits = WheelConfig.wheelConfigLimits
+
+    if (this._minSpinDuration < limits.minSpinDuration) {
+      throw new Error(`Minimum spin duration cannot be less than ${limits.minSpinDuration}ms`)
     }
 
-    if (this._maxSpinDuration > WheelConfig.MAX_SPIN_DURATION) {
-      throw new Error(`Maximum spin duration cannot exceed ${WheelConfig.MAX_SPIN_DURATION}ms`)
+    if (this._maxSpinDuration > limits.maxSpinDuration) {
+      throw new Error(`Maximum spin duration cannot exceed ${limits.maxSpinDuration}ms`)
     }
 
     if (this._minSpinDuration >= this._maxSpinDuration) {
@@ -144,9 +146,10 @@ export class WheelConfig {
   }
 
   static createDefault(): WheelConfig {
+    const limits = WheelConfig.wheelConfigLimits
     return new WheelConfig(
-      WheelConfig.DEFAULT_MIN_SPIN,
-      WheelConfig.DEFAULT_MAX_SPIN,
+      limits.defaultMinSpin,
+      limits.defaultMaxSpin,
       true, // exclude finished by default
       false // don't allow repeat selections by default
     )

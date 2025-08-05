@@ -2,6 +2,7 @@ import { RoomId, ParticipantId } from '../../shared/value-objects/id'
 import { RoomName, ParticipantName } from '../value-objects/names'
 import { RoomStatus, WheelConfig } from '../value-objects/room-attributes'
 import { Participant } from './participant'
+import { configurationService } from '@/core/services/configuration'
 
 /**
  * Selection History Entry value object
@@ -58,7 +59,10 @@ export class Room {
       props.selectionHistory
     )
   }
-  private static readonly TTL_HOURS = 8
+  // Room TTL is now sourced from centralized configuration (converted from seconds to milliseconds)
+  private static get ttlMs(): number {
+    return configurationService.getRedisConfig().roomTtlSeconds * 1000
+  }
 
   constructor(
     private readonly _id: RoomId,
@@ -371,7 +375,7 @@ export class Room {
     organizerName: string
   ): Room {
     const now = new Date()
-    const expiresAt = new Date(now.getTime() + Room.TTL_HOURS * 60 * 60 * 1000)
+    const expiresAt = new Date(now.getTime() + Room.ttlMs)
 
     // Create organizer participant
     const organizer = Participant.createOrganizer(organizerId, new ParticipantName(organizerName))

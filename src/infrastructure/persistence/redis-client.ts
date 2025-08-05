@@ -8,57 +8,13 @@
 import Redis from 'ioredis'
 import type { Room } from '@/domain/compatibility-types'
 import { safeValidateRoom } from '../validation/zod-schemas'
-
-/**
- * Redis TTL in seconds (8 hours = 8 * 60 * 60 = 28800 seconds)
- * As specified in FR-2: Persist room state in Redis (TTL 8 h)
- */
-export const ROOM_TTL_SECONDS = 8 * 60 * 60 // 28800 seconds
-
-/**
- * Redis key prefix for room data
- * Using format: room:{id} for clear namespacing
- */
-export const ROOM_KEY_PREFIX = 'room:'
+import { configurationService } from '@/core/services/configuration'
 
 /**
  * Redis client instance
  * Singleton pattern to ensure single connection throughout the application
  */
 let redisClient: Redis | null = null
-
-/**
- * Configuration for Redis connection
- */
-interface RedisConfig {
-  url?: string
-  host?: string
-  port?: number
-  password?: string
-  retryDelayOnFailover?: number
-  maxRetriesPerRequest?: number
-}
-
-/**
- * Get Redis configuration from environment variables
- *
- * @returns Redis configuration object
- */
-function getRedisConfig(): RedisConfig {
-  const redisUrl = process.env.REDIS_URL
-
-  if (redisUrl) {
-    return { url: redisUrl }
-  }
-
-  return {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379', 10),
-    password: process.env.REDIS_PASSWORD || undefined,
-    retryDelayOnFailover: 100,
-    maxRetriesPerRequest: 3,
-  }
-}
 
 /**
  * Initialize Redis client with proper error handling and configuration
@@ -72,9 +28,26 @@ export async function getRedisClient(): Promise<Redis> {
   }
 
   try {
-    const config = getRedisConfig()
+    const config = configurationService.getRedisConfig()
 
-    redisClient = new Redis(config)
+    // Build Redis configuration
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const redisConfig: any = {
+      retryDelayOnFailover: config.retryDelayOnFailover,
+      maxRetriesPerRequest: config.maxRetriesPerRequest,
+    }
+
+    // Use URL if provided, otherwise use individual settings
+    if (config.url) {
+      redisClient = new Redis(config.url, redisConfig)
+    } else {
+      redisClient = new Redis({
+        ...redisConfig,
+        host: config.host,
+        port: config.port,
+        password: config.password,
+      })
+    }
 
     // Setup error handlers
     redisClient.on('error', (error: unknown) => {
@@ -117,16 +90,17 @@ export async function getRedisClient(): Promise<Redis> {
  * Generate Redis key for a room
  *
  * @param roomId - Unique room identifier
- * @returns Redis key in format "room:{id}"
+ * @returns Redis key in format from configuration
  */
 export function getRoomKey(roomId: string): string {
-  return `${ROOM_KEY_PREFIX}${roomId}`
+  const config = configurationService.getRedisConfig()
+  return `${config.keyPrefix}${roomId}`
 }
 
 /**
  * Store room data in Redis with TTL
  *
- * Sets the room data in Redis with an 8-hour TTL for automatic cleanup.
+ * Sets the room data in Redis with TTL from configuration for automatic cleanup.
  * The TTL is refreshed each time the room is updated.
  *
  * @param roomId - Unique room identifier
@@ -137,11 +111,12 @@ export function getRoomKey(roomId: string): string {
 export async function setRoom(roomId: string, roomData: Room): Promise<boolean> {
   try {
     const client = await getRedisClient()
+    const config = configurationService.getRedisConfig()
     const key = getRoomKey(roomId)
     const serializedData = JSON.stringify(roomData)
 
     // Use SETEX to set value with TTL atomically
-    const result = await client.setex(key, ROOM_TTL_SECONDS, serializedData)
+    const result = await client.setex(key, config.roomTtlSeconds, serializedData)
 
     if (result !== 'OK') {
       console.error(`Failed to set room ${roomId}: Redis returned ${result}`)

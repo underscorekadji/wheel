@@ -7,11 +7,10 @@ import {
   deleteRoom,
   getRoomTTL,
   getRoomKey,
-  ROOM_TTL_SECONDS,
-  ROOM_KEY_PREFIX,
   getRedisClient,
   closeRedisConnection,
 } from '../redis-client'
+import { configurationService } from '../../../core/services/configuration'
 
 // Mock ioredis
 vi.mock('ioredis', () => {
@@ -44,8 +43,8 @@ const mockRoom: Room = {
   expiresAt: new Date('2024-01-01T18:00:00Z'),
   currentPresenterId: null,
   wheelConfig: {
-    minSpinDuration: 2000,
-    maxSpinDuration: 5000,
+    minSpinDuration: 800, // Within test environment limits
+    maxSpinDuration: 1200, // Within test environment limits
     excludeFinished: true,
     allowRepeatSelections: false,
   },
@@ -103,19 +102,20 @@ describe('Redis Helper Functions', () => {
   })
 
   describe('Redis Configuration', () => {
-    it('should have correct TTL constant', () => {
-      expect(ROOM_TTL_SECONDS).toBe(8 * 60 * 60) // 8 hours in seconds
-      expect(ROOM_TTL_SECONDS).toBe(28800)
+    it('should have correct TTL constant for test environment', () => {
+      // In test environment, TTL is 60 seconds (as configured in test.ts)
+      expect(configurationService.getRedisConfig().roomTtlSeconds).toBe(60)
     })
 
-    it('should have correct key prefix', () => {
-      expect(ROOM_KEY_PREFIX).toBe('room:')
+    it('should have correct key prefix for test environment', () => {
+      // In test environment, prefix is 'test:room:' (as configured in test.ts)
+      expect(configurationService.getRedisConfig().keyPrefix).toBe('test:room:')
     })
 
-    it('should generate correct room key', () => {
+    it('should generate correct room key with test prefix', () => {
       const roomId = '550e8400-e29b-41d4-a716-446655440000'
       const key = getRoomKey(roomId)
-      expect(key).toBe('room:550e8400-e29b-41d4-a716-446655440000')
+      expect(key).toBe('test:room:550e8400-e29b-41d4-a716-446655440000')
     })
   })
 
@@ -149,8 +149,8 @@ describe('Redis Helper Functions', () => {
 
       expect(result).toBe(true)
       expect(mockRedisInstance.setex).toHaveBeenCalledWith(
-        'room:550e8400-e29b-41d4-a716-446655440000',
-        ROOM_TTL_SECONDS,
+        'test:room:550e8400-e29b-41d4-a716-446655440000',
+        configurationService.getRedisConfig().roomTtlSeconds,
         JSON.stringify(mockRoom)
       )
     })
@@ -187,7 +187,7 @@ describe('Redis Helper Functions', () => {
         })
       )
       expect(mockRedisInstance.get).toHaveBeenCalledWith(
-        'room:550e8400-e29b-41d4-a716-446655440000'
+        'test:room:550e8400-e29b-41d4-a716-446655440000'
       )
 
       // Verify dates are properly parsed
@@ -228,7 +228,7 @@ describe('Redis Helper Functions', () => {
 
       expect(result).toBe(true)
       expect(mockRedisInstance.exists).toHaveBeenCalledWith(
-        'room:550e8400-e29b-41d4-a716-446655440000'
+        'test:room:550e8400-e29b-41d4-a716-446655440000'
       )
     })
 
@@ -257,7 +257,7 @@ describe('Redis Helper Functions', () => {
 
       expect(result).toBe(true)
       expect(mockRedisInstance.del).toHaveBeenCalledWith(
-        'room:550e8400-e29b-41d4-a716-446655440000'
+        'test:room:550e8400-e29b-41d4-a716-446655440000'
       )
     })
 
@@ -284,7 +284,7 @@ describe('Redis Helper Functions', () => {
 
       expect(result).toBe(3600)
       expect(mockRedisInstance.ttl).toHaveBeenCalledWith(
-        'room:550e8400-e29b-41d4-a716-446655440000'
+        'test:room:550e8400-e29b-41d4-a716-446655440000'
       )
     })
 
