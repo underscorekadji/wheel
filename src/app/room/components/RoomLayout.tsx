@@ -177,7 +177,7 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
     }
   }
 
-  const handleSpin = async (timeInMinutes: number) => {
+  const handleSpin = async () => {
     setIsSpinning(true)
     setIsLoading(true)
     try {
@@ -201,8 +201,8 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
                     : p
                 ),
                 currentPresenterId: selectedParticipant.id,
-                timerStartTime: new Date(),
-                timerDurationMinutes: timeInMinutes,
+                timerStartTime: undefined, // Don't start timer automatically
+                timerDurationMinutes: undefined,
               }
             : null
         )
@@ -212,6 +212,28 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
       setError('Failed to spin wheel')
     } finally {
       setIsSpinning(false)
+      setIsLoading(false)
+    }
+  }
+
+  const handleStartTimer = async (timeInMinutes: number) => {
+    setIsLoading(true)
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      setRoomData(prev =>
+        prev
+          ? {
+              ...prev,
+              timerStartTime: new Date(),
+              timerDurationMinutes: timeInMinutes,
+            }
+          : null
+      )
+    } catch (error) {
+      console.error('Failed to start timer:', error)
+      setError('Failed to start timer')
+    } finally {
       setIsLoading(false)
     }
   }
@@ -351,6 +373,9 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
                 userRole === ParticipantRoleEnum.ORGANIZER ? handleMarkFinished : undefined
               }
               onStopTimer={userRole === ParticipantRoleEnum.ORGANIZER ? handleStopTimer : undefined}
+              onStartTimer={
+                userRole === ParticipantRoleEnum.ORGANIZER ? handleStartTimer : undefined
+              }
               timerStartTime={roomData.timerStartTime}
               timerDurationMinutes={roomData.timerDurationMinutes}
               isLoading={isLoading}

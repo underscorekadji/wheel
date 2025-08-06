@@ -17,6 +17,7 @@ interface TimerPanelProps {
   currentUserRole: ParticipantRoleEnum
   onMarkFinished?: (id: string) => void
   onStopTimer?: () => void
+  onStartTimer?: (timeInMinutes: number) => void
   timerStartTime?: Date | null
   timerDurationMinutes?: number
   isLoading?: boolean
@@ -27,12 +28,14 @@ export function TimerPanel({
   currentUserRole,
   onMarkFinished,
   onStopTimer,
+  onStartTimer,
   timerStartTime,
   timerDurationMinutes = 10,
   isLoading = false,
 }: TimerPanelProps) {
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isActive, setIsActive] = useState(false)
+  const [selectedTime, setSelectedTime] = useState(10)
 
   const isOrganizer = currentUserRole === ParticipantRoleEnum.ORGANIZER
 
@@ -85,6 +88,12 @@ export function TimerPanel({
     if (timeRemaining <= 30) return 'bg-red-50 dark:bg-red-900/20' // Critical
     if (timeRemaining <= 120) return 'bg-yellow-50 dark:bg-yellow-900/20' // Warning
     return 'bg-green-50 dark:bg-green-900/20' // Normal
+  }
+
+  const handleStartTimer = () => {
+    if (onStartTimer && selectedTime > 0) {
+      onStartTimer(selectedTime)
+    }
   }
 
   return (
@@ -142,6 +151,72 @@ export function TimerPanel({
               </div>
             </div>
           )}
+
+          {/* Timer Controls (Organizer Only) */}
+          {isOrganizer &&
+            !isActive &&
+            currentPresenter.status === ParticipantStatusEnum.ACTIVE &&
+            onStartTimer && (
+              <div className='space-y-4'>
+                <div>
+                  <h4 className='text-md font-medium text-gray-700 dark:text-gray-300 mb-3'>
+                    Presentation Duration
+                  </h4>
+                  <div className='flex items-center space-x-3'>
+                    <label
+                      htmlFor='time-input'
+                      className='text-sm font-medium text-gray-700 dark:text-gray-300'
+                    >
+                      Minutes:
+                    </label>
+                    <input
+                      type='number'
+                      id='time-input'
+                      min='1'
+                      max='60'
+                      value={selectedTime}
+                      onChange={e =>
+                        setSelectedTime(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))
+                      }
+                      className='flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 
+                      rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
+                      dark:bg-gray-700 dark:text-white text-center'
+                    />
+                  </div>
+
+                  {/* Quick Choose Section */}
+                  <div className='mt-3'>
+                    <p className='text-xs font-medium text-gray-600 dark:text-gray-400 mb-2'>
+                      Quick Choose:
+                    </p>
+                    <div className='flex space-x-2'>
+                      {[5, 10, 15, 30].map(minutes => (
+                        <button
+                          key={minutes}
+                          onClick={() => setSelectedTime(minutes)}
+                          className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                            selectedTime === minutes
+                              ? 'bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600'
+                              : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          {minutes}m
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleStartTimer}
+                  disabled={isLoading}
+                  className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 
+                  text-white font-medium py-3 px-4 rounded-lg transition-colors'
+                >
+                  Start Timer ({selectedTime} min)
+                </button>
+              </div>
+            )}
 
           {/* Control Buttons (Organizer Only) */}
           {isOrganizer && (

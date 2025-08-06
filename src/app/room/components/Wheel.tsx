@@ -18,7 +18,7 @@ interface WheelProps {
   participants: Participant[]
   currentUserRole: ParticipantRoleEnum
   isSpinning?: boolean
-  onSpin?: (timeInMinutes: number) => void
+  onSpin?: () => void
   lastWinner?: {
     id: string
     name: string
@@ -48,8 +48,6 @@ export function Wheel({
   lastWinner,
 }: WheelProps) {
   const [rotation, setRotation] = useState(0)
-  const [showTimeModal, setShowTimeModal] = useState(false)
-  const [selectedTime, setSelectedTime] = useState(10)
 
   const isOrganizer = currentUserRole === ParticipantRoleEnum.ORGANIZER
 
@@ -61,21 +59,15 @@ export function Wheel({
   const canSpin = isOrganizer && eligibleParticipants.length > 0 && !isSpinning
 
   const handleSpinClick = () => {
-    if (!canSpin) return
-    setShowTimeModal(true)
-  }
+    if (!canSpin || !onSpin) return
 
-  const handleTimeSubmit = () => {
-    if (onSpin && selectedTime > 0) {
-      // Calculate random rotation (multiple full rotations + random position)
-      const baseRotations = 5 + Math.random() * 3 // 5-8 full rotations
-      const randomAngle = Math.random() * 360
-      const newRotation = rotation + baseRotations * 360 + randomAngle
+    // Calculate random rotation (multiple full rotations + random position)
+    const baseRotations = 5 + Math.random() * 3 // 5-8 full rotations
+    const randomAngle = Math.random() * 360
+    const newRotation = rotation + baseRotations * 360 + randomAngle
 
-      setRotation(newRotation)
-      onSpin(selectedTime)
-    }
-    setShowTimeModal(false)
+    setRotation(newRotation)
+    onSpin()
   }
 
   // Calculate sector size and positions
@@ -228,59 +220,6 @@ export function Wheel({
           )}
         </div>
       </div>
-
-      {/* Time Selection Modal */}
-      {showTimeModal && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
-          <div className='bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4'>
-            <h3 className='text-lg font-bold text-gray-900 dark:text-white mb-4'>
-              Set Presentation Time
-            </h3>
-
-            <div className='mb-6'>
-              <label
-                htmlFor='time-input'
-                className='block text-sm font-medium 
-                text-gray-700 dark:text-gray-300 mb-2'
-              >
-                Minutes (1-60):
-              </label>
-              <input
-                type='number'
-                id='time-input'
-                min='1'
-                max='60'
-                value={selectedTime}
-                onChange={e =>
-                  setSelectedTime(Math.max(1, Math.min(60, parseInt(e.target.value) || 1)))
-                }
-                className='w-full px-3 py-2 border border-gray-300 dark:border-gray-600 
-                  rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 
-                  dark:bg-gray-700 dark:text-white'
-                autoFocus
-              />
-            </div>
-
-            <div className='flex space-x-3'>
-              <button
-                onClick={() => setShowTimeModal(false)}
-                className='flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 
-                  border border-gray-300 dark:border-gray-600 rounded-md 
-                  hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleTimeSubmit}
-                className='flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 
-                  text-white rounded-md transition-colors'
-              >
-                Spin ({selectedTime} min)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
