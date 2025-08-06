@@ -1,11 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import React, { useRef, useState, useEffect, useMemo } from 'react'
 import {
   ParticipantRoleEnum,
   ParticipantStatusEnum,
 } from '@/domain/room/value-objects/participant-attributes'
+
+// Types
+export type WheelItem = {
+  id: string
+  label: string
+  color?: string
+  meta?: Record<string, unknown>
+}
 
 interface Participant {
   id: string
@@ -14,165 +21,299 @@ interface Participant {
   role: ParticipantRoleEnum
 }
 
-interface WheelProps {
+export type WheelProps = {
   participants: Participant[]
   currentUserRole: ParticipantRoleEnum
   isSpinning?: boolean
-  onSpin?: () => void
+  onSpinStart?: () => void
+  onResult?: (winner: { id: string; name: string }) => void
+  onError?: (e: Error) => void
   lastWinner?: {
     id: string
     name: string
   } | null
+  className?: string
 }
 
+const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3)
+
+// Predefined unique colors for wheel sectors
 const WHEEL_COLORS = [
-  '#FF6B6B',
-  '#4ECDC4',
-  '#45B7D1',
-  '#FFA07A',
-  '#98D8C8',
-  '#F7DC6F',
-  '#BB8FCE',
-  '#85C1E9',
-  '#F8C471',
-  '#82E0AA',
-  '#F1948A',
-  '#AED6F1',
+  '#FF6B6B', // Red
+  '#4ECDC4', // Turquoise
+  '#45B7D1', // Blue
+  '#FFA07A', // Salmon
+  '#98D8C8', // Mint
+  '#F7DC6F', // Yellow
+  '#BB8FCE', // Violet
+  '#85C1E9', // Light Blue
+  '#F8C471', // Orange
+  '#82E0AA', // Green
+  '#F1948A', // Pink
+  '#AED6F1', // Sky Blue
+  '#D7BDE2', // Lavender
+  '#A3E4D7', // Aquamarine
+  '#FAD7A0', // Peach
+  '#F9E79F', // Cream
+  '#D5A6BD', // Dusty Rose
+  '#A9CCE3', // Sky Blue
+  '#ABEBC6', // Light Green
+  '#F5B7B1', // Coral
 ]
 
-export function Wheel({
+// Generate color ensuring uniqueness within the wheel
+const getUniqueWheelColor = (
+  participantId: string,
+  index: number,
+  totalParticipants: number
+): string => {
+  // If participants are fewer than predefined colors, use them in order
+  if (totalParticipants <= WHEEL_COLORS.length) {
+    return WHEEL_COLORS[index]
+  }
+
+  // If more participants, generate colors evenly distributed on the color wheel
+  const hueStep = 360 / totalParticipants
+  const hue = Math.round(index * hueStep)
+
+  // Add a small variation based on ID for determinism
+  let hash = 0
+  for (let i = 0; i < participantId.length; i++) {
+    hash = participantId.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const hueOffset = (Math.abs(hash) % 30) - 15 // ±15 градусов вариации
+  const finalHue = (hue + hueOffset + 360) % 360
+
+  // Use high saturation and medium brightness for good contrast
+  const saturation = 65 + (Math.abs(hash) % 20) // 65-84%
+  const lightness = 55 + (Math.abs(hash >> 8) % 15) // 55-69%
+
+  return `hsl(${finalHue}, ${saturation}%, ${lightness}%)`
+}
+
+export const Wheel: React.FC<WheelProps> = ({
   participants,
   currentUserRole,
   isSpinning = false,
-  onSpin,
+  onSpinStart,
+  onResult,
+  onError,
   lastWinner,
-}: WheelProps) {
-  const [rotation, setRotation] = useState(0)
-
-  const isOrganizer = currentUserRole === ParticipantRoleEnum.ORGANIZER
-
-  // Get eligible participants (queued only)
-  const eligibleParticipants = participants.filter(
+  className = '',
+}) => {
+  // Ensure participants is array and get eligible ones
+  const safeParticipants = Array.isArray(participants) ? participants : []
+  const eligibleParticipants = safeParticipants.filter(
     p => p.status === ParticipantStatusEnum.QUEUED || p.status === ParticipantStatusEnum.ACTIVE
   )
 
-  const canSpin = isOrganizer && eligibleParticipants.length > 0 && !isSpinning
+  // Convert participants to wheel items
+  const items = useMemo(
+    () =>
+      eligibleParticipants.map(p => ({
+        id: p.id,
+        label: p.name,
+      })),
+    [eligibleParticipants]
+  )
 
-  const handleSpinClick = () => {
-    if (!canSpin || !onSpin) return
+  // Props validation
+  useEffect(() => {
+    try {
+      if (items.length < 2 || items.length > 20) {
+        if (items.length === 1) {
+          // Allow single participant for display purposes
+          return
+        }
+        throw new Error('Participants count must be between 2 and 20')
+      }
+      const ids = items.map(i => i.id)
+      if (new Set(ids).size !== ids.length) {
+        throw new Error('Duplicate participant id found')
+      }
+      items.forEach(item => {
+        if (!item.label || item.label.length > 20) {
+          throw new Error(`Label missing or exceeds 20 chars: ${item.id}`)
+        }
+      })
+    } catch (err) {
+      onError?.(err as Error)
+    }
+  }, [items, onError])
 
-    // Calculate random rotation (multiple full rotations + random position)
-    const baseRotations = 5 + Math.random() * 3 // 5-8 full rotations
-    const randomAngle = Math.random() * 360
-    const newRotation = rotation + baseRotations * 360 + randomAngle
+  const [currentAngle, setCurrentAngle] = useState<number>(0)
+  const [spinning, setSpinning] = useState<boolean>(false)
+  const rafRef = useRef<number | null>(null)
 
-    setRotation(newRotation)
-    onSpin()
+  const isOrganizer = currentUserRole === ParticipantRoleEnum.ORGANIZER
+  const canSpin = isOrganizer && items.length >= 1 && !spinning && !isSpinning
+
+  // Reduced motion preference
+  const prefersReduced = useMemo(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    }
+    return false
+  }, [])
+
+  // Angle per sector
+  const anglePerItem = items.length > 0 ? 360 / items.length : 360
+
+  // Sectors with colors
+  const sectors = useMemo(
+    () =>
+      items.map((item, index) => ({
+        ...item,
+        color: getUniqueWheelColor(item.id, index, items.length),
+      })),
+    [items]
+  )
+
+  // Convert polar to cartesian coordinates
+  const polarToCartesian = (
+    cx: number,
+    cy: number,
+    r: number,
+    deg: number
+  ): { x: number; y: number } => {
+    const rad = ((deg - 90) * Math.PI) / 180
+    return {
+      x: cx + r * Math.cos(rad),
+      y: cy + r * Math.sin(rad),
+    }
   }
 
-  // Calculate sector size and positions
-  const sectorCount = Math.max(eligibleParticipants.length, 1)
-  const sectorAngle = 360 / sectorCount
-
-  const renderWheelSectors = () => {
-    if (eligibleParticipants.length === 0) {
-      return <circle cx='200' cy='200' r='150' fill='#E5E7EB' className='dark:fill-gray-600' />
+  // Render sectors
+  const renderSectors = (): React.ReactElement[] => {
+    if (sectors.length === 0) {
+      return [
+        <circle
+          key='empty'
+          cx={200}
+          cy={200}
+          r={180}
+          fill='#E5E7EB'
+          className='dark:fill-gray-600'
+        />,
+      ]
     }
 
-    return eligibleParticipants.map((participant, index) => {
-      const startAngle = index * sectorAngle - 90 // Start from top
-      const endAngle = (index + 1) * sectorAngle - 90
-      const color = WHEEL_COLORS[index % WHEEL_COLORS.length]
-
-      // Calculate path for sector
-      const startAngleRad = (startAngle * Math.PI) / 180
-      const endAngleRad = (endAngle * Math.PI) / 180
-      const largeArcFlag = sectorAngle > 180 ? 1 : 0
-
-      const x1 = 200 + 150 * Math.cos(startAngleRad)
-      const y1 = 200 + 150 * Math.sin(startAngleRad)
-      const x2 = 200 + 150 * Math.cos(endAngleRad)
-      const y2 = 200 + 150 * Math.sin(endAngleRad)
-
-      const pathData = [
-        `M 200 200`,
-        `L ${x1} ${y1}`,
-        `A 150 150 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-        `Z`,
-      ].join(' ')
+    return sectors.map((item, idx) => {
+      const startAngle = idx * anglePerItem
+      const endAngle = startAngle + anglePerItem
+      const largeArcFlag = anglePerItem > 180 ? 1 : 0
+      const start = polarToCartesian(200, 200, 180, startAngle)
+      const end = polarToCartesian(200, 200, 180, endAngle)
+      const pathData = `M200,200 L${start.x},${start.y} A180,180 0 ${largeArcFlag} 1 ${end.x},${end.y} Z`
 
       // Calculate text position
-      const textAngle = startAngle + sectorAngle / 2
-      const textAngleRad = (textAngle * Math.PI) / 180
-      const textX = 200 + 100 * Math.cos(textAngleRad)
-      const textY = 200 + 100 * Math.sin(textAngleRad)
+      const textAngle = startAngle + anglePerItem / 2
+      const textPos = polarToCartesian(200, 200, 120, textAngle)
 
       return (
-        <g key={participant.id}>
-          <path d={pathData} fill={color} stroke='#FFFFFF' strokeWidth='2' />
+        <g key={item.id}>
+          <path d={pathData} fill={item.color} stroke='#fff' strokeWidth={2} />
           <text
-            x={textX}
-            y={textY}
+            x={textPos.x}
+            y={textPos.y}
             textAnchor='middle'
             dominantBaseline='middle'
             fill='#FFFFFF'
             fontSize='14'
             fontWeight='bold'
-            transform={`rotate(${textAngle} ${textX} ${textY})`}
             className='pointer-events-none select-none'
           >
-            {participant.name.length > 10
-              ? participant.name.substring(0, 10) + '...'
-              : participant.name}
+            {item.label.length > 10 ? item.label.substring(0, 10) + '...' : item.label}
           </text>
         </g>
       )
     })
   }
 
+  // Обработчик спина
+  const spin = (): void => {
+    if (spinning || !canSpin || items.length === 0) return
+    try {
+      onSpinStart?.()
+      setSpinning(true)
+
+      // Выбор победителя
+      const buf = new Uint32Array(1)
+      window.crypto.getRandomValues(buf)
+      const random = buf[0] / 0xffffffff
+      const idx = Math.floor(random * items.length)
+      const winner = items[idx]
+
+      // Целевой угол (центр сектора)
+      const sectorStart = idx * anglePerItem
+      const targetAngle = sectorStart + anglePerItem / 2
+
+      // Параметры анимации
+      const rotations = prefersReduced ? 1 : Math.floor(Math.random() * 5) + 2
+      const duration = prefersReduced ? 500 : Math.floor(Math.random() * 3000) + 2000
+      const totalRotation = rotations * 360 + (360 - targetAngle)
+      const startTime = performance.now()
+
+      // Анимационный цикл
+      const animate = (now: number) => {
+        const elapsed = now - startTime
+        const t = Math.min(elapsed / duration, 1)
+        const eased = easeOutCubic(t)
+        setCurrentAngle(eased * totalRotation)
+        if (t < 1) {
+          rafRef.current = requestAnimationFrame(animate)
+        } else {
+          setSpinning(false)
+          onResult?.({
+            id: winner.id,
+            name: winner.label,
+          })
+        }
+      }
+
+      rafRef.current = requestAnimationFrame(animate)
+    } catch (err) {
+      onError?.(err as Error)
+      setSpinning(false)
+    }
+  }
+
+  // Очистка при размонтировании
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [])
+
   return (
-    <div className='bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6'>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 ${className}`}>
       <div className='text-center'>
         <h2 className='text-xl font-bold text-gray-900 dark:text-white mb-6'>
           Presenter Selection Wheel
         </h2>
 
         {/* Wheel Container */}
-        <div className='relative inline-block'>
-          {/* Wheel */}
-          <motion.div
-            animate={{ rotate: rotation }}
-            transition={{
-              duration: isSpinning ? 3 : 0,
-              ease: [0.23, 1, 0.32, 1], // Custom easing for realistic deceleration
-            }}
-            className='relative'
-          >
-            <svg width='400' height='400' className='drop-shadow-lg'>
-              {renderWheelSectors()}
-              {/* Center circle */}
-              <circle cx='200' cy='200' r='20' fill='#374151' className='dark:fill-gray-700' />
-            </svg>
-          </motion.div>
-
-          {/* Pointer */}
-          <div className='absolute top-2 left-1/2 transform -translate-x-1/2 z-10'>
-            <div
-              className='w-0 h-0 border-l-[15px] border-r-[15px] border-b-[30px] 
-              border-l-transparent border-r-transparent border-b-gray-800 dark:border-b-gray-700'
-            ></div>
-          </div>
+        <div className='relative inline-block' style={{ userSelect: 'none' }}>
+          <svg width={400} height={400} viewBox='0 0 400 400' className='drop-shadow-lg'>
+            <g transform={`rotate(${currentAngle} 200 200)`}>{renderSectors()}</g>
+            {/* Pointer */}
+            <polygon
+              points='200,10 185,50 215,50'
+              fill='#e74c3c'
+              stroke='#c0392b'
+              strokeWidth={2}
+              style={{ pointerEvents: 'none' }}
+            />
+            {/* Center circle */}
+            <circle cx='200' cy='200' r='20' fill='#374151' className='dark:fill-gray-700' />
+          </svg>
 
           {/* Spinning overlay */}
-          {isSpinning && (
-            <div
-              className='absolute inset-0 bg-black bg-opacity-20 rounded-full 
-              flex items-center justify-center'
-            >
-              <div
-                className='text-white text-lg font-bold bg-black bg-opacity-50 
-                px-4 py-2 rounded-lg'
-              >
+          {(spinning || isSpinning) && (
+            <div className='absolute inset-0 bg-black bg-opacity-20 rounded-full flex items-center justify-center'>
+              <div className='text-white text-lg font-bold bg-black bg-opacity-50 px-4 py-2 rounded-lg'>
                 Spinning...
               </div>
             </div>
@@ -180,7 +321,7 @@ export function Wheel({
         </div>
 
         {/* Last Winner Display */}
-        {lastWinner && !isSpinning && (
+        {lastWinner && !spinning && !isSpinning && (
           <div className='mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg'>
             <p className='text-green-800 dark:text-green-300 font-medium'>
               Last Selected: <span className='font-bold'>{lastWinner.name}</span>
@@ -192,18 +333,17 @@ export function Wheel({
         <div className='mt-6'>
           {isOrganizer ? (
             <button
-              onClick={handleSpinClick}
+              onClick={spin}
               disabled={!canSpin}
-              className={`px-8 py-3 text-lg font-bold rounded-lg transition-all duration-200 
-                ${
-                  canSpin
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-                    : 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                }`}
+              className={`px-8 py-3 text-lg font-bold rounded-lg transition-all duration-200 ${
+                canSpin
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                  : 'bg-gray-400 text-gray-600 cursor-not-allowed'
+              }`}
             >
-              {isSpinning
+              {spinning || isSpinning
                 ? 'Spinning...'
-                : eligibleParticipants.length === 0
+                : items.length === 0
                   ? 'No Participants Available'
                   : 'Spin the Wheel'}
             </button>
@@ -213,7 +353,7 @@ export function Wheel({
             </div>
           )}
 
-          {eligibleParticipants.length === 0 && (
+          {items.length === 0 && (
             <p className='mt-2 text-sm text-gray-500 dark:text-gray-400'>
               Add participants to enable wheel spinning
             </p>
@@ -223,3 +363,6 @@ export function Wheel({
     </div>
   )
 }
+
+// Add default export for test compatibility
+export default Wheel
