@@ -16,10 +16,13 @@ interface TimerPanelProps {
   currentPresenter: CurrentPresenter | null
   currentUserRole: ParticipantRoleEnum
   onMarkFinished?: (id: string) => void
-  onStopTimer?: () => void
+  onPauseTimer?: () => void
+  onContinueTimer?: () => void
   onStartTimer?: (timeInMinutes: number) => void
   timerStartTime?: Date | null
   timerDurationMinutes?: number
+  timerPausedTime?: Date | null
+  timerRemainingSeconds?: number
   isLoading?: boolean
 }
 
@@ -27,27 +30,53 @@ export function TimerPanel({
   currentPresenter,
   currentUserRole,
   onMarkFinished,
-  onStopTimer,
+  onPauseTimer,
+  onContinueTimer,
   onStartTimer,
   timerStartTime,
   timerDurationMinutes = 10,
+  timerPausedTime,
+  timerRemainingSeconds,
   isLoading = false,
 }: TimerPanelProps) {
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [isActive, setIsActive] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [selectedTime, setSelectedTime] = useState(10)
 
   const isOrganizer = currentUserRole === ParticipantRoleEnum.ORGANIZER
 
   // Calculate time remaining
   useEffect(() => {
-    if (!timerStartTime || !currentPresenter) {
+    if (!currentPresenter) {
       setTimeRemaining(0)
       setIsActive(false)
+      setIsPaused(false)
+      return
+    }
+
+    // Check if timer is paused
+    if (timerPausedTime && !timerStartTime) {
+      setIsPaused(true)
+      setIsActive(false)
+      // Set the remaining time from room data if available
+      if (timerRemainingSeconds !== undefined) {
+        setTimeRemaining(timerRemainingSeconds)
+      }
+      return
+    }
+
+    // Check if timer is not started
+    if (!timerStartTime) {
+      setTimeRemaining(0)
+      setIsActive(false)
+      setIsPaused(false)
       return
     }
 
     setIsActive(true)
+    setIsPaused(false)
+
     const updateTimer = () => {
       const now = new Date()
       const elapsed = Math.floor((now.getTime() - timerStartTime.getTime()) / 1000)
@@ -66,7 +95,13 @@ export function TimerPanel({
     const interval = setInterval(updateTimer, 1000)
 
     return () => clearInterval(interval)
-  }, [timerStartTime, timerDurationMinutes, currentPresenter])
+  }, [
+    timerStartTime,
+    timerDurationMinutes,
+    timerPausedTime,
+    timerRemainingSeconds,
+    currentPresenter,
+  ])
 
   const formatTime = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60)
@@ -75,6 +110,7 @@ export function TimerPanel({
   }
 
   const getTimerColor = (): string => {
+    if (isPaused) return 'text-orange-500' // Paused
     if (!isActive || timeRemaining === 0) return 'text-gray-500 dark:text-gray-400'
 
     if (timeRemaining <= 30) return 'text-red-500' // Critical: last 30 seconds
@@ -83,6 +119,7 @@ export function TimerPanel({
   }
 
   const getTimerBgColor = (): string => {
+    if (isPaused) return 'bg-orange-50 dark:bg-orange-900/20' // Paused
     if (!isActive || timeRemaining === 0) return 'bg-gray-100 dark:bg-gray-700'
 
     if (timeRemaining <= 30) return 'bg-red-50 dark:bg-red-900/20' // Critical
@@ -127,7 +164,7 @@ export function TimerPanel({
           </div>
 
           {/* Timer Display */}
-          {isActive && (
+          {(isActive || isPaused) && (
             <div className='text-center'>
               <h4 className='text-md font-medium text-gray-700 dark:text-gray-300 mb-3'>
                 Time Remaining
@@ -138,12 +175,17 @@ export function TimerPanel({
                 >
                   {formatTime(timeRemaining)}
                 </div>
-                {timeRemaining <= 30 && timeRemaining > 0 && (
+                {isPaused && (
+                  <div className='mt-2 text-orange-600 dark:text-orange-400 text-sm font-medium'>
+                    ⏸️ Timer Paused
+                  </div>
+                )}
+                {!isPaused && timeRemaining <= 30 && timeRemaining > 0 && (
                   <div className='mt-2 text-red-600 dark:text-red-400 text-sm font-medium animate-pulse'>
                     Time running out!
                   </div>
                 )}
-                {timeRemaining === 0 && (
+                {!isPaused && timeRemaining === 0 && (
                   <div className='mt-2 text-red-600 dark:text-red-400 text-sm font-medium'>
                     Time&apos;s up!
                   </div>
@@ -155,6 +197,7 @@ export function TimerPanel({
           {/* Timer Controls (Organizer Only) */}
           {isOrganizer &&
             !isActive &&
+            !isPaused &&
             currentPresenter.status === ParticipantStatusEnum.ACTIVE &&
             onStartTimer && (
               <div className='space-y-4'>
@@ -232,14 +275,27 @@ export function TimerPanel({
                 </button>
               )}
 
-              {isActive && onStopTimer && (
+              {/* Show Pause button when timer is active */}
+              {isActive && onPauseTimer && (
                 <button
-                  onClick={onStopTimer}
+                  onClick={onPauseTimer}
                   disabled={isLoading}
-                  className='w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 
+                  className='w-full bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 
                     text-white font-medium py-2 px-4 rounded-lg transition-colors'
                 >
-                  Stop Timer
+                  Pause Timer
+                </button>
+              )}
+
+              {/* Show Continue button when timer is paused */}
+              {isPaused && onContinueTimer && (
+                <button
+                  onClick={onContinueTimer}
+                  disabled={isLoading}
+                  className='w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 
+                    text-white font-medium py-2 px-4 rounded-lg transition-colors'
+                >
+                  Continue Timer
                 </button>
               )}
             </div>

@@ -27,6 +27,8 @@ interface RoomData {
   organizerId: string
   timerStartTime?: Date
   timerDurationMinutes?: number
+  timerPausedTime?: Date
+  timerRemainingSeconds?: number
 }
 
 interface RoomLayoutProps {
@@ -41,6 +43,7 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isSpinning, setIsSpinning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastWinnerState, setLastWinner] = useState<{ id: string; name: string } | null>(null)
 
   // Initialize role detection
   useEffect(() => {
@@ -85,6 +88,24 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
             id: '3',
             name: 'Carol Williams',
             status: ParticipantStatusEnum.FINISHED,
+            role: ParticipantRoleEnum.GUEST,
+          },
+          {
+            id: '4',
+            name: 'David Wilson',
+            status: ParticipantStatusEnum.QUEUED,
+            role: ParticipantRoleEnum.GUEST,
+          },
+          {
+            id: '5',
+            name: 'Eve Brown',
+            status: ParticipantStatusEnum.QUEUED,
+            role: ParticipantRoleEnum.GUEST,
+          },
+          {
+            id: '6',
+            name: 'Frank Miller',
+            status: ParticipantStatusEnum.DISABLED,
             role: ParticipantRoleEnum.GUEST,
           },
         ],
@@ -177,43 +198,41 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
     }
   }
 
-  const handleSpin = async () => {
+  const handleSpinStart = () => {
     setIsSpinning(true)
     setIsLoading(true)
+  }
+
+  const handleSpinResult = async (winner: { id: string; name: string }) => {
     try {
-      // Simulate wheel spin duration
-      await new Promise(resolve => setTimeout(resolve, 3000))
-
-      const eligibleParticipants =
-        roomData?.participants.filter(p => p.status === ParticipantStatusEnum.QUEUED) || []
-
-      if (eligibleParticipants.length > 0) {
-        const selectedParticipant =
-          eligibleParticipants[Math.floor(Math.random() * eligibleParticipants.length)]
-
-        setRoomData(prev =>
-          prev
-            ? {
-                ...prev,
-                participants: prev.participants.map(p =>
-                  p.id === selectedParticipant.id
-                    ? { ...p, status: ParticipantStatusEnum.ACTIVE }
-                    : p
-                ),
-                currentPresenterId: selectedParticipant.id,
-                timerStartTime: undefined, // Don't start timer automatically
-                timerDurationMinutes: undefined,
-              }
-            : null
-        )
-      }
+      setRoomData(prev =>
+        prev
+          ? {
+              ...prev,
+              participants: prev.participants.map(p =>
+                p.id === winner.id ? { ...p, status: ParticipantStatusEnum.ACTIVE } : p
+              ),
+              currentPresenterId: winner.id,
+              timerStartTime: undefined, // Don't start timer automatically
+              timerDurationMinutes: undefined,
+            }
+          : null
+      )
+      setLastWinner({ id: winner.id, name: winner.name })
     } catch (error) {
-      console.error('Failed to spin wheel:', error)
-      setError('Failed to spin wheel')
+      console.error('Failed to process wheel result:', error)
+      setError('Failed to process wheel result')
     } finally {
       setIsSpinning(false)
       setIsLoading(false)
     }
+  }
+
+  const handleSpinError = (error: Error) => {
+    console.error('Wheel spin error:', error)
+    setError(error.message)
+    setIsSpinning(false)
+    setIsLoading(false)
   }
 
   const handleStartTimer = async (timeInMinutes: number) => {
@@ -238,22 +257,67 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
     }
   }
 
-  const handleStopTimer = async () => {
+  const handlePauseTimer = async () => {
     setIsLoading(true)
     try {
       await new Promise(resolve => setTimeout(resolve, 300))
 
-      setRoomData(prev =>
-        prev
-          ? {
-              ...prev,
-              timerStartTime: undefined,
-            }
-          : null
-      )
+      // Calculate remaining time when pausing
+      const now = new Date()
+      const currentRoomData = roomData
+      if (currentRoomData?.timerStartTime && currentRoomData?.timerDurationMinutes) {
+        const elapsed = Math.floor(
+          (now.getTime() - currentRoomData.timerStartTime.getTime()) / 1000
+        )
+        const totalSeconds = currentRoomData.timerDurationMinutes * 60
+        const remainingSeconds = Math.max(0, totalSeconds - elapsed)
+
+        setRoomData(prev =>
+          prev
+            ? {
+                ...prev,
+                timerStartTime: undefined, // Stop the timer
+                timerPausedTime: now, // Mark when it was paused
+                timerRemainingSeconds: remainingSeconds, // Save remaining time
+              }
+            : null
+        )
+      }
     } catch (error) {
-      console.error('Failed to stop timer:', error)
-      setError('Failed to stop timer')
+      console.error('Failed to pause timer:', error)
+      setError('Failed to pause timer')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleContinueTimer = async () => {
+    setIsLoading(true)
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      // Resume timer with remaining time
+      const now = new Date()
+      const currentRoomData = roomData
+      if (currentRoomData?.timerRemainingSeconds !== undefined) {
+        // Calculate new duration in minutes from remaining seconds
+        const remainingMinutes = currentRoomData.timerRemainingSeconds / 60
+
+        setRoomData(prev =>
+          prev
+            ? {
+                ...prev,
+                timerStartTime: now,
+                timerDurationMinutes: remainingMinutes,
+                timerPausedTime: undefined,
+                timerRemainingSeconds: undefined,
+              }
+            : null
+        )
+      }
+    } catch (error) {
+      console.error('Failed to continue timer:', error)
+      setError('Failed to continue timer')
     } finally {
       setIsLoading(false)
     }
@@ -296,12 +360,14 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
     ? roomData.participants.find(p => p.id === roomData.currentPresenterId)
     : null
 
-  const lastWinner = currentPresenter
-    ? {
-        id: currentPresenter.id,
-        name: currentPresenter.name,
-      }
-    : null
+  const lastWinner =
+    lastWinnerState ||
+    (currentPresenter
+      ? {
+          id: currentPresenter.id,
+          name: currentPresenter.name,
+        }
+      : null)
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800'>
@@ -359,7 +425,9 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
               participants={roomData.participants}
               currentUserRole={userRole}
               isSpinning={isSpinning}
-              onSpin={userRole === ParticipantRoleEnum.ORGANIZER ? handleSpin : undefined}
+              onSpinStart={userRole === ParticipantRoleEnum.ORGANIZER ? handleSpinStart : undefined}
+              onResult={userRole === ParticipantRoleEnum.ORGANIZER ? handleSpinResult : undefined}
+              onError={handleSpinError}
               lastWinner={lastWinner}
             />
           </div>
@@ -372,12 +440,19 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
               onMarkFinished={
                 userRole === ParticipantRoleEnum.ORGANIZER ? handleMarkFinished : undefined
               }
-              onStopTimer={userRole === ParticipantRoleEnum.ORGANIZER ? handleStopTimer : undefined}
+              onPauseTimer={
+                userRole === ParticipantRoleEnum.ORGANIZER ? handlePauseTimer : undefined
+              }
+              onContinueTimer={
+                userRole === ParticipantRoleEnum.ORGANIZER ? handleContinueTimer : undefined
+              }
               onStartTimer={
                 userRole === ParticipantRoleEnum.ORGANIZER ? handleStartTimer : undefined
               }
               timerStartTime={roomData.timerStartTime}
               timerDurationMinutes={roomData.timerDurationMinutes}
+              timerPausedTime={roomData.timerPausedTime}
+              timerRemainingSeconds={roomData.timerRemainingSeconds}
               isLoading={isLoading}
             />
           </div>
