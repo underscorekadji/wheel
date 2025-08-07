@@ -335,7 +335,9 @@ export function TimerPanel({
       <div className='mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg'>
         <h4 className='text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>Session Info</h4>
         <ul className='text-xs text-gray-600 dark:text-gray-400 space-y-1'>
-          <li>• Timer duration: {timerDurationMinutes} minutes</li>
+          <li>
+            • Session duration: {timerStartTime ? timerDurationMinutes : selectedTime} minutes
+          </li>
           <li>• Yellow warning: Last 2 minutes</li>
           <li>• Red critical: Last 30 seconds</li>
           {isOrganizer && <li>• Click &quot;Mark as Finished&quot; to end early</li>}

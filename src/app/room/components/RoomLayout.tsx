@@ -51,11 +51,11 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
     // In production, this would be handled by proper authentication
     const isOrganizer = RoleDetectionService.isOrganizer(roomId)
 
-    if (!isOrganizer) {
-      // Mark as organizer if no cookie exists (first visitor)
-      RoleDetectionService.setAsOrganizer(roomId)
+    if (isOrganizer) {
       setUserRole(ParticipantRoleEnum.ORGANIZER)
     } else {
+      // Mark as organizer if no cookie exists (first visitor)
+      RoleDetectionService.setAsOrganizer(roomId)
       setUserRole(ParticipantRoleEnum.ORGANIZER)
     }
 
