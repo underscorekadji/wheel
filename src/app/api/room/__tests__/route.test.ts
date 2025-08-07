@@ -1,7 +1,21 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { POST } from '../route'
 
+// Mock the Redis repository to avoid requiring Redis in tests
+vi.mock('@/infrastructure/repositories/redis-room-repository', () => {
+  return {
+    RedisRoomRepository: vi.fn().mockImplementation(() => ({
+      save: vi.fn().mockResolvedValue(undefined),
+      findById: vi.fn().mockResolvedValue(null),
+      delete: vi.fn().mockResolvedValue(undefined),
+    })),
+  }
+})
+
 describe('POST /api/room', () => {
+  // UUID v4 regex pattern to verify format
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
   it('should create a room with a valid UUID v4', async () => {
     // Call the API handler
     const response = await POST()
@@ -11,12 +25,18 @@ describe('POST /api/room', () => {
 
     // Parse and verify response body structure
     const responseBody = await response.json()
-    expect(responseBody).toHaveProperty('id')
-    expect(typeof responseBody.id).toBe('string')
+    expect(responseBody).toHaveProperty('roomId')
+    expect(responseBody).toHaveProperty('organizerId')
+    expect(responseBody).toHaveProperty('roomName')
+    expect(responseBody).toHaveProperty('status')
 
-    // UUID v4 regex pattern to verify format
-    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    expect(responseBody.id).toMatch(uuidV4Regex)
+    // Validate UUIDs
+    expect(responseBody.roomId).toMatch(uuidRegex)
+    expect(responseBody.organizerId).toMatch(uuidRegex)
+
+    // Validate other properties
+    expect(responseBody.roomName).toBe('Presentation Room')
+    expect(responseBody.status).toBe('waiting')
   })
 
   it('should return unique UUIDs on multiple calls', async () => {
@@ -32,16 +52,21 @@ describe('POST /api/room', () => {
     const responseBodies = await Promise.all(responses.map(response => response.json()))
 
     // Extract IDs
-    const ids = responseBodies.map(body => body.id)
+    const roomIds = responseBodies.map(body => body.roomId)
+    const organizerIds = responseBodies.map(body => body.organizerId)
 
     // Verify all IDs are different (uniqueness)
-    const uniqueIds = new Set(ids)
-    expect(uniqueIds.size).toBe(3)
+    const uniqueRoomIds = new Set(roomIds)
+    const uniqueOrganizerIds = new Set(organizerIds)
+    expect(uniqueRoomIds.size).toBe(3)
+    expect(uniqueOrganizerIds.size).toBe(3)
 
     // Verify all IDs are valid UUID v4 format
-    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    ids.forEach(id => {
-      expect(id).toMatch(uuidV4Regex)
+    roomIds.forEach(id => {
+      expect(id).toMatch(uuidRegex)
+    })
+    organizerIds.forEach(id => {
+      expect(id).toMatch(uuidRegex)
     })
   })
 
@@ -58,8 +83,11 @@ describe('POST /api/room', () => {
     const responseBody = await response.json()
 
     // Verify response structure
-    expect(responseBody).toHaveProperty('id')
-    expect(Object.keys(responseBody)).toEqual(['id'])
+    expect(responseBody).toHaveProperty('roomId')
+    expect(responseBody).toHaveProperty('organizerId')
+    expect(responseBody).toHaveProperty('roomName')
+    expect(responseBody).toHaveProperty('status')
+    expect(Object.keys(responseBody)).toEqual(['roomId', 'organizerId', 'roomName', 'status'])
 
     // Verify response status and content type
     expect(response.status).toBe(201)
@@ -76,11 +104,14 @@ describe('POST /api/room', () => {
     const responseBodies = await Promise.all(responses.map(response => response.json()))
 
     // Extract all IDs
-    const ids = responseBodies.map(body => body.id)
+    const roomIds = responseBodies.map(body => body.roomId)
+    const organizerIds = responseBodies.map(body => body.organizerId)
 
     // Verify all IDs are unique
-    const uniqueIds = new Set(ids)
-    expect(uniqueIds.size).toBe(numberOfCalls)
+    const uniqueRoomIds = new Set(roomIds)
+    const uniqueOrganizerIds = new Set(organizerIds)
+    expect(uniqueRoomIds.size).toBe(numberOfCalls)
+    expect(uniqueOrganizerIds.size).toBe(numberOfCalls)
 
     // Verify all responses have correct status and format
     responses.forEach(response => {
@@ -88,9 +119,11 @@ describe('POST /api/room', () => {
     })
 
     // Verify UUID v4 format for all IDs
-    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    ids.forEach(id => {
-      expect(id).toMatch(uuidV4Regex)
+    roomIds.forEach(id => {
+      expect(id).toMatch(uuidRegex)
+    })
+    organizerIds.forEach(id => {
+      expect(id).toMatch(uuidRegex)
     })
   })
 
@@ -107,13 +140,15 @@ describe('POST /api/room', () => {
     expect(response2.status).toBe(201)
 
     // Verify IDs are strings and different
-    expect(typeof body1.id).toBe('string')
-    expect(typeof body2.id).toBe('string')
-    expect(body1.id).not.toBe(body2.id)
+    expect(typeof body1.roomId).toBe('string')
+    expect(typeof body2.roomId).toBe('string')
+    expect(body1.roomId).not.toBe(body2.roomId)
+    expect(body1.organizerId).not.toBe(body2.organizerId)
 
     // Verify both IDs are valid UUID v4 format
-    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    expect(body1.id).toMatch(uuidV4Regex)
-    expect(body2.id).toMatch(uuidV4Regex)
+    expect(body1.roomId).toMatch(uuidRegex)
+    expect(body2.roomId).toMatch(uuidRegex)
+    expect(body1.organizerId).toMatch(uuidRegex)
+    expect(body2.organizerId).toMatch(uuidRegex)
   })
 })

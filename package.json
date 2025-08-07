@@ -15,13 +15,25 @@
     "test:run": "vitest run",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
+    "check": "npm run format:check && npm run lint && npm run type-check",
+    "verify": "npm run check && npm run test:run && npm run build",
+    "docker": "cd docker/dev && docker compose up -d",
+    "docker:down": "cd docker/dev && docker compose down -v",
+    "clean": "rm -rf .next node_modules/.cache coverage",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:outdated": "npm outdated",
+    "deps:update": "npm update && npm audit fix",
     "prepare": "husky"
   },
   "dependencies": {
+    "@types/socket.io": "^3.0.1",
+    "framer-motion": "^12.23.12",
     "ioredis": "^5.7.0",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "zod": "^4.0.14"
   },
   "devDependencies": {
