@@ -44,7 +44,8 @@ export interface UseRoomSocketReturn {
 export function useRoomSocket(config: UseRoomSocketConfig): UseRoomSocketReturn {
   const {
     roomId,
-    url = process.env.NEXT_PUBLIC_SOCKET_URL || '',
+    url = process.env.NEXT_PUBLIC_SOCKET_URL || 
+          (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'),
     autoConnect = true,
     role = 'guest', // Default to guest role if not specified
     userId,
