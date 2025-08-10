@@ -58,9 +58,9 @@ describe('SocketManager', () => {
           transports: ['websocket', 'polling'],
           autoConnect: true,
           reconnection: true,
-          reconnectionAttempts: 2, // Test environment value
-          reconnectionDelay: 500, // Test environment value
-          timeout: 5000, // Test environment value
+          reconnectionAttempts: 5, // Client-side default value
+          reconnectionDelay: 1000, // Client-side default value
+          timeout: 20000, // Client-side default value
         })
       )
 
@@ -74,7 +74,7 @@ describe('SocketManager', () => {
 
       await expect(connectPromise).rejects.toThrow('Connection timeout')
       expect(socketManager.getStatus()).toBe('error')
-    }, 15000) // Increased timeout for this test
+    }, 25000) // Increased timeout to account for new 20s connection timeout
 
     it('should handle connection errors', async () => {
       const error = new Error('Connection failed')
@@ -347,7 +347,7 @@ describe('SocketManager', () => {
       socketManager['setupConnectionHandlers']()
 
       // Set up reconnection error scenario
-      socketManager['reconnectAttempts'] = 1 // Will become 2 after increment (test environment max is 2)
+      socketManager['reconnectAttempts'] = 4 // Will become 5 after increment (client default max is 5)
       socketManager['status'] = 'connecting'
 
       const reconnectErrorCallback = mockSocket.on.mock.calls.find(

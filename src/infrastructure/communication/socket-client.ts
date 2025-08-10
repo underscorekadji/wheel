@@ -1,5 +1,4 @@
 import { io, Socket } from 'socket.io-client'
-import { configurationService } from '@/core/services/configuration'
 import type {
   SocketEventMap,
   SocketConfig,
@@ -16,6 +15,13 @@ import type {
   ConnectionErrorEvent,
 } from '@/types/socket'
 
+// Client-side socket configuration with sensible defaults
+const DEFAULT_SOCKET_CLIENT_CONFIG = {
+  maxReconnectAttempts: 5,
+  reconnectDelay: 1000,
+  connectionTimeout: 20000,
+}
+
 /**
  * Socket.IO client manager for room-based communication
  *
@@ -29,9 +35,9 @@ export class SocketManager {
   private reconnectAttempts = 0
   private reconnectTimeoutId: NodeJS.Timeout | null = null
 
-  // Get configuration values from centralized configuration service
+  // Get configuration values with client-side defaults
   private get socketClientConfig() {
-    return configurationService.getSocketClientConfig()
+    return DEFAULT_SOCKET_CLIENT_CONFIG
   }
 
   /**
