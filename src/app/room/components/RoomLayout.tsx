@@ -5,19 +5,14 @@ import {
   ParticipantRoleEnum,
   ParticipantStatusEnum,
 } from '@/domain/room/value-objects/participant-attributes'
+import { Participant } from '@/domain/compatibility-types'
 import { RoleDetectionService } from '../utils/role-detection'
+import { useRoomSocket } from '@/hooks/useRoomSocket'
 import { RoomTitle } from './RoomTitle'
 import { ParticipantsList } from './ParticipantsList'
 import { Wheel } from './Wheel'
 import { TimerPanel } from './TimerPanel'
 import { Instructions } from './Instructions'
-
-interface Participant {
-  id: string
-  name: string
-  status: ParticipantStatusEnum
-  role: ParticipantRoleEnum
-}
 
 interface RoomData {
   id: string
@@ -42,10 +37,17 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
   const [roomData, setRoomData] = useState<RoomData | null>(initialData || null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSpinning, setIsSpinning] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [lastWinnerState, setLastWinner] = useState<{ id: string; name: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  // Initialize role detection
+  // Initialize Socket.IO connection
+  const socket = useRoomSocket({
+    roomId,
+    userId: currentUserId,
+    autoConnect: true,
+  })
+
+  // Initialize role detection and user session
   useEffect(() => {
     // For MVP, first visitor to a room becomes organizer
     // In production, this would be handled by proper authentication
@@ -64,10 +66,110 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
     setCurrentUserId(crypto.randomUUID())
   }, [roomId])
 
-  // Mock data for development - replace with real Socket.IO integration
+  // Set up Socket.IO event listeners for real-time updates
   useEffect(() => {
-    if (!roomData) {
-      // Simulate loading room data
+    if (!socket.isConnected) return
+
+    // Subscribe to room state updates
+    const unsubscribeStateUpdate = socket.on.roomStateUpdate(data => {
+      console.log('Received room state update:', data)
+      setRoomData({
+        id: data.roomId,
+        participants: data.participants,
+        currentPresenterId: data.currentPresenter,
+        organizerId:
+          data.participants.find(p => p.role === ParticipantRoleEnum.ORGANIZER)?.id || '',
+        // Note: Timer state from socket would need to be mapped to local timer state
+        // This is a simplified implementation
+      })
+    })
+
+    // Subscribe to participant updates
+    const unsubscribeParticipantUpdate = socket.on.participantUpdate(data => {
+      console.log('Received participant update:', data)
+      setRoomData(prev => {
+        if (!prev) return prev
+
+        const updatedParticipants = prev.participants.map(p =>
+          p.id === data.participant.id
+            ? {
+                ...data.participant,
+                status: data.participant.status as any, // Type conversion for enum compatibility
+                role: data.participant.role as any,
+              }
+            : p
+        )
+
+        // Add new participant if not found
+        if (!prev.participants.find(p => p.id === data.participant.id)) {
+          updatedParticipants.push({
+            ...data.participant,
+            status: data.participant.status as any,
+            role: data.participant.role as any,
+          })
+        }
+
+        return {
+          ...prev,
+          participants: updatedParticipants,
+        }
+      })
+    })
+
+    // Subscribe to wheel spin events
+    const unsubscribeWheelSpin = socket.on.wheelSpin(data => {
+      console.log('Received wheel spin event:', data)
+      if (data.action === 'spin_complete' && data.selectedParticipant) {
+        setRoomData(prev => {
+          if (!prev) return prev
+
+          const participant = prev.participants.find(p => p.id === data.selectedParticipant)
+          if (participant) {
+            setLastWinner({ id: participant.id, name: participant.name })
+            return {
+              ...prev,
+              participants: prev.participants.map(p =>
+                p.id === data.selectedParticipant
+                  ? { ...p, status: 'active' as any, lastUpdatedAt: new Date() }
+                  : p
+              ),
+              currentPresenterId: data.selectedParticipant,
+            }
+          }
+          return prev
+        })
+        setIsSpinning(false)
+      } else if (data.action === 'start_spin') {
+        setIsSpinning(true)
+      }
+    })
+
+    // Subscribe to timer updates
+    const unsubscribeTimerUpdate = socket.on.timerUpdate(data => {
+      console.log('Received timer update:', data)
+      // Handle timer state updates from the server
+      // This would update the local timer state based on server events
+    })
+
+    // Subscribe to errors
+    const unsubscribeError = socket.on.error(data => {
+      console.error('Socket error:', data)
+    })
+
+    // Cleanup function
+    return () => {
+      unsubscribeStateUpdate()
+      unsubscribeParticipantUpdate()
+      unsubscribeWheelSpin()
+      unsubscribeTimerUpdate()
+      unsubscribeError()
+    }
+  }, [socket.isConnected, socket.on])
+
+  // Mock data for development when not connected - replace with real Socket.IO integration
+  useEffect(() => {
+    if (!roomData && !socket.isConnected) {
+      // Simulate loading room data when socket is not available
       setRoomData({
         id: roomId,
         name: `Demo Room`,
@@ -75,69 +177,101 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
           {
             id: '1',
             name: 'Alice Johnson',
-            status: ParticipantStatusEnum.QUEUED,
-            role: ParticipantRoleEnum.ORGANIZER,
+            status: 'queued',
+            role: 'organizer',
+            joinedAt: new Date(),
+            lastUpdatedAt: new Date(),
+            lastSelectedAt: null,
           },
           {
             id: '2',
             name: 'Bob Smith',
-            status: ParticipantStatusEnum.QUEUED,
-            role: ParticipantRoleEnum.GUEST,
+            status: 'queued',
+            role: 'guest',
+            joinedAt: new Date(),
+            lastUpdatedAt: new Date(),
+            lastSelectedAt: null,
           },
           {
             id: '3',
             name: 'Carol Williams',
-            status: ParticipantStatusEnum.FINISHED,
-            role: ParticipantRoleEnum.GUEST,
+            status: 'finished',
+            role: 'guest',
+            joinedAt: new Date(),
+            lastUpdatedAt: new Date(),
+            lastSelectedAt: new Date(),
           },
           {
             id: '4',
             name: 'David Wilson',
-            status: ParticipantStatusEnum.QUEUED,
-            role: ParticipantRoleEnum.GUEST,
+            status: 'queued',
+            role: 'guest',
+            joinedAt: new Date(),
+            lastUpdatedAt: new Date(),
+            lastSelectedAt: null,
           },
           {
             id: '5',
             name: 'Eve Brown',
-            status: ParticipantStatusEnum.QUEUED,
-            role: ParticipantRoleEnum.GUEST,
+            status: 'queued',
+            role: 'guest',
+            joinedAt: new Date(),
+            lastUpdatedAt: new Date(),
+            lastSelectedAt: null,
           },
           {
             id: '6',
             name: 'Frank Miller',
-            status: ParticipantStatusEnum.DISABLED,
-            role: ParticipantRoleEnum.GUEST,
+            status: 'disabled',
+            role: 'guest',
+            joinedAt: new Date(),
+            lastUpdatedAt: new Date(),
+            lastSelectedAt: null,
           },
         ],
         organizerId: '1',
       })
     }
-  }, [roomId, roomData])
+  }, [roomId, roomData, socket.isConnected])
 
   const handleAddParticipant = async (name: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500))
-
+      // Emit participant update via Socket.IO instead of API call
       const newParticipant: Participant = {
         id: crypto.randomUUID(),
         name,
-        status: ParticipantStatusEnum.QUEUED,
-        role: ParticipantRoleEnum.GUEST,
+        status: 'queued',
+        role: 'guest',
+        joinedAt: new Date(),
+        lastUpdatedAt: new Date(),
+        lastSelectedAt: null,
       }
 
-      setRoomData(prev =>
-        prev
-          ? {
-              ...prev,
-              participants: [...prev.participants, newParticipant],
-            }
-          : null
-      )
+      // Emit via socket if connected, otherwise fallback to local state
+      if (socket.isConnected) {
+        socket.emit.participantUpdate({
+          participant: newParticipant,
+          action: 'added',
+        })
+      } else {
+        // Fallback to local state update for development
+        setRoomData(prev =>
+          prev
+            ? {
+                ...prev,
+                participants: [...prev.participants, newParticipant],
+              }
+            : null
+        )
+      }
     } catch (error) {
       console.error('Failed to add participant:', error)
-      setError('Failed to add participant')
+      // Use socket error if available, otherwise local error state
+      if (!socket.error) {
+        // For development fallback, we don't have an error state
+        console.warn('No socket error state available')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -146,28 +280,34 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
   const handleToggleParticipant = async (id: string, enable: boolean) => {
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 300))
+      const participant = roomData?.participants.find(p => p.id === id)
+      if (!participant) return
 
-      setRoomData(prev =>
-        prev
-          ? {
-              ...prev,
-              participants: prev.participants.map(p =>
-                p.id === id
-                  ? {
-                      ...p,
-                      status: enable
-                        ? ParticipantStatusEnum.QUEUED
-                        : ParticipantStatusEnum.DISABLED,
-                    }
-                  : p
-              ),
-            }
-          : null
-      )
+      const updatedParticipant: Participant = {
+        ...participant,
+        status: enable ? 'queued' : 'disabled',
+        lastUpdatedAt: new Date(),
+      }
+
+      // Emit via socket if connected, otherwise fallback to local state
+      if (socket.isConnected) {
+        socket.emit.participantUpdate({
+          participant: updatedParticipant,
+          action: 'updated',
+        })
+      } else {
+        // Fallback to local state update
+        setRoomData(prev =>
+          prev
+            ? {
+                ...prev,
+                participants: prev.participants.map(p => (p.id === id ? updatedParticipant : p)),
+              }
+            : null
+        )
+      }
     } catch (error) {
       console.error('Failed to toggle participant:', error)
-      setError('Failed to update participant')
     } finally {
       setIsLoading(false)
     }
@@ -201,6 +341,22 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
   const handleSpinStart = () => {
     setIsSpinning(true)
     setIsLoading(true)
+
+    // Emit wheel spin start via socket if connected
+    if (socket.isConnected) {
+      const queuedParticipants =
+        roomData?.participants.filter(p => p.status === ParticipantStatusEnum.QUEUED) || []
+
+      socket.emit.wheelSpin({
+        wheelState: {
+          isSpinning: true,
+          spinStartTime: new Date().toISOString(),
+          spinDuration: Math.random() * 2000 + 2000, // 2-4 seconds
+        },
+        action: 'start_spin',
+        spinDuration: 3000,
+      })
+    }
   }
 
   const handleSpinResult = async (winner: { id: string; name: string }) => {
@@ -372,15 +528,49 @@ export function RoomLayout({ roomId, initialData }: RoomLayoutProps) {
   return (
     <div className='min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800'>
       <div className='container mx-auto px-4 py-6 max-w-7xl'>
+        {/* Socket Connection Status */}
+        <div className='mb-4 flex items-center justify-between'>
+          <div className='flex items-center space-x-2'>
+            <div
+              className={`w-3 h-3 rounded-full ${
+                socket.status === 'connected'
+                  ? 'bg-green-500'
+                  : socket.status === 'connecting'
+                    ? 'bg-yellow-500 animate-pulse'
+                    : socket.status === 'error'
+                      ? 'bg-red-500'
+                      : 'bg-gray-400'
+              }`}
+            ></div>
+            <span className='text-sm text-gray-600 dark:text-gray-300'>
+              {socket.status === 'connected' && socket.socketId
+                ? `Connected (${socket.socketId.substring(0, 8)}...)`
+                : socket.status === 'connecting'
+                  ? 'Connecting...'
+                  : socket.status === 'error'
+                    ? `Connection Error: ${socket.error}`
+                    : 'Disconnected'}
+            </span>
+          </div>
+          {socket.status === 'error' && (
+            <button
+              onClick={socket.reconnect}
+              className='px-3 py-1 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 transition-colors'
+            >
+              Retry
+            </button>
+          )}
+        </div>
+
         {/* Error Message */}
-        {error && (
+        {socket.error && socket.status === 'error' && (
           <div
             className='mb-6 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 
             rounded-lg p-4 flex items-center justify-between'
           >
-            <p className='text-red-700 dark:text-red-300'>{error}</p>
+            <p className='text-red-700 dark:text-red-300'>{socket.error}</p>
             <button
-              onClick={() => setError(null)}
+              onClick={() => socket.reconnect()}
               className='text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300'
             >
               <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
