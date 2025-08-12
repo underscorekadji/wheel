@@ -4,7 +4,6 @@ import { useRoomSocket } from '@/hooks/useRoomSocket'
 import { getSocketManager } from '@/infrastructure/communication/socket-client'
 import { RoleDetectionService } from '@/app/room/utils/role-detection'
 import { ParticipantRoleEnum } from '@/domain/room/value-objects/participant-attributes'
-import type { SocketStatus } from '@/types/socket'
 
 // Mock the dependencies
 vi.mock('@/infrastructure/communication/socket-client')
@@ -38,15 +37,15 @@ const mockSocketManager = {
 
 beforeEach(() => {
   vi.mocked(getSocketManager).mockReturnValue(mockSocketManager as never)
-  
+
   // Reset all mocks
   vi.clearAllMocks()
-  
+
   // Default mock implementations
   mockSocketManager.isConnected.mockReturnValue(false)
   mockSocketManager.getStatus.mockReturnValue('disconnected')
   vi.mocked(RoleDetectionService.getCurrentRole).mockReturnValue(ParticipantRoleEnum.GUEST)
-  
+
   // Mock successful connection by default
   mockSocketManager.connect.mockImplementation(async () => {
     // Simulate successful connection
@@ -149,8 +148,8 @@ describe('useRoomSocket', () => {
   describe('3) Switch namespace when roomId changes', () => {
     it('should disconnect from previous room and connect to new room', async () => {
       const newRoomId = '661f8500-e29b-41d4-a716-446655440001'
-      
-      const { result, rerender } = renderHook(
+
+      const { rerender } = renderHook(
         ({ roomId }) => useRoomSocket({ roomId, autoConnect: true }),
         { initialProps: { roomId: validRoomId } }
       )
@@ -199,17 +198,11 @@ describe('useRoomSocket', () => {
       )
 
       // Should set up visibility change listener
-      expect(addEventListenerSpy).toHaveBeenCalledWith(
-        'visibilitychange',
-        expect.any(Function)
-      )
+      expect(addEventListenerSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
 
       // Should clean up listener on unmount
       unmount()
-      expect(removeEventListenerSpy).toHaveBeenCalledWith(
-        'visibilitychange',
-        expect.any(Function)
-      )
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
 
       addEventListenerSpy.mockRestore()
       removeEventListenerSpy.mockRestore()
@@ -218,9 +211,7 @@ describe('useRoomSocket', () => {
 
   describe('5) Role restoration from cookie', () => {
     it('should restore role from cookie on connect', async () => {
-      vi.mocked(RoleDetectionService.getCurrentRole).mockReturnValue(
-        ParticipantRoleEnum.ORGANIZER
-      )
+      vi.mocked(RoleDetectionService.getCurrentRole).mockReturnValue(ParticipantRoleEnum.ORGANIZER)
 
       const { result } = renderHook(() =>
         useRoomSocket({
@@ -243,7 +234,7 @@ describe('useRoomSocket', () => {
     })
   })
 
-  describe('6) Emits during reconnect don\'t break UI', () => {
+  describe("6) Emits during reconnect don't break UI", () => {
     it('should queue emits when socket is connecting and send them when connected', async () => {
       const { result } = renderHook(() =>
         useRoomSocket({
@@ -313,6 +304,9 @@ describe('useRoomSocket', () => {
             name: 'Test User',
             status: 'queued',
             role: 'guest',
+            joinedAt: new Date(),
+            lastUpdatedAt: new Date(),
+            lastSelectedAt: null,
           },
           action: 'added',
         })
@@ -324,6 +318,9 @@ describe('useRoomSocket', () => {
           name: 'Test User',
           status: 'queued',
           role: 'guest',
+          joinedAt: expect.any(Date),
+          lastUpdatedAt: expect.any(Date),
+          lastSelectedAt: null,
         },
         action: 'added',
       })
@@ -434,7 +431,7 @@ describe('useRoomSocket', () => {
     it('should allow multiple hook instances for the same room', async () => {
       // Clear mocks to get clean counts
       vi.clearAllMocks()
-      
+
       const { result: result1 } = renderHook(() =>
         useRoomSocket({
           roomId: validRoomId,
