@@ -1,3 +1,11 @@
+#!/usr/bin/env sh
+
+# Skip Husky hooks when running in CI (e.g., GitHub Actions)
+if [ "$GITHUB_ACTIONS" = "true" ] || [ "$CI" = "true" ]; then
+  echo "ℹ️  Skipping pre-commit hook in CI environment"
+  exit 0
+fi
+
 echo "🔍 Running pre-commit checks..."
 
 # Use the check script for consistency
