@@ -1,3 +1,11 @@
+#!/usr/bin/env sh
+
+# Skip Husky commit-msg when running in CI (e.g., GitHub Actions)
+if [ "$GITHUB_ACTIONS" = "true" ] || [ "$CI" = "true" ]; then
+  echo "ℹ️  Skipping commit-msg hook in CI environment"
+  exit 0
+fi
+
 echo "🔍 Checking commit message format..."
 
 # Run commitlint to validate commit message against conventional commits
